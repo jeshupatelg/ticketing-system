@@ -1,6 +1,5 @@
-# Agent artifacts and metadata (scratch, logs, plans ignored; rules tracked)
-.agent/*
-!.agent/rules/
+# Agent artifacts and metadata
+.agent/
 
 # Database migration scripts and backups
 migrate/
