@@ -14,6 +14,9 @@ public class TicketComment {
     @Column(name = "ticket_id", nullable = false, length = 32)
     private String ticketId;
 
+    @Column(name = "author_username")
+    private String authorUsername;
+
     @Column(nullable = false)
     private String author;
 
@@ -29,7 +32,12 @@ public class TicketComment {
     public TicketComment() {}
 
     public TicketComment(String ticketId, String author, String authorAvatarUrl, String content) {
+        this(ticketId, null, author, authorAvatarUrl, content);
+    }
+
+    public TicketComment(String ticketId, String authorUsername, String author, String authorAvatarUrl, String content) {
         this.ticketId = ticketId;
+        this.authorUsername = authorUsername;
         this.author = author;
         this.authorAvatarUrl = authorAvatarUrl;
         this.content = content;
@@ -41,6 +49,9 @@ public class TicketComment {
 
     public String getTicketId() { return ticketId; }
     public void setTicketId(String ticketId) { this.ticketId = ticketId; }
+
+    public String getAuthorUsername() { return authorUsername; }
+    public void setAuthorUsername(String authorUsername) { this.authorUsername = authorUsername; }
 
     public String getAuthor() { return author; }
     public void setAuthor(String author) { this.author = author; }

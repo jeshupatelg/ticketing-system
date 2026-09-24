@@ -116,9 +116,10 @@ public class TicketController {
         if (currentUser == null) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
         }
+        String authorUsername = currentUser.getUsername();
         String author = currentUser.getName();
         String avatar = currentUser.getAvatarUrl();
-        return ResponseEntity.ok(ticketService.addComment(id, author, avatar, request.getContent()));
+        return ResponseEntity.ok(ticketService.addComment(id, authorUsername, author, avatar, request.getContent()));
     }
 
     // Related tickets

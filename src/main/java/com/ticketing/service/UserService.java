@@ -13,9 +13,12 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final com.ticketing.repository.TicketCommentRepository ticketCommentRepository;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository,
+                       com.ticketing.repository.TicketCommentRepository ticketCommentRepository) {
         this.userRepository = userRepository;
+        this.ticketCommentRepository = ticketCommentRepository;
     }
 
     @Transactional
@@ -68,7 +71,12 @@ public class UserService {
         User user = userRepository.findByUsername(username.toLowerCase())
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + username));
         user.setAvatarUrl(avatarUrl);
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+
+        // Synchronize avatar URL on all comments created by this user
+        ticketCommentRepository.updateAvatarByAuthor(user.getUsername(), user.getName(), avatarUrl);
+
+        return saved;
     }
 
     public UserProfileResponse toProfileResponse(User user) {

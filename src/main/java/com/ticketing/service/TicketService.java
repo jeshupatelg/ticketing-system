@@ -376,10 +376,15 @@ public class TicketService {
      */
     @Transactional
     public TicketComment addComment(String ticketId, String author, String authorAvatarUrl, String content) {
+        return addComment(ticketId, null, author, authorAvatarUrl, content);
+    }
+
+    @Transactional
+    public TicketComment addComment(String ticketId, String authorUsername, String author, String authorAvatarUrl, String content) {
         ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
-        TicketComment comment = new TicketComment(ticketId, author, authorAvatarUrl, content.trim());
+        TicketComment comment = new TicketComment(ticketId, authorUsername, author, authorAvatarUrl, content.trim());
         return commentRepository.save(comment);
     }
 
@@ -541,7 +546,31 @@ public class TicketService {
         // Fill detail collections
         detail.setIdeas(ideaRepository.findByTicketIdOrderByOrderIndexAsc(ticket.getId()));
         detail.setCheckpoints(checkpointRepository.findByTicketIdOrderByOrderIndexAsc(ticket.getId()));
-        detail.setComments(commentRepository.findByTicketIdOrderByCreatedAtAsc(ticket.getId()));
+
+        List<TicketComment> comments = commentRepository.findByTicketIdOrderByCreatedAtAsc(ticket.getId());
+        for (TicketComment c : comments) {
+            String uname = c.getAuthorUsername();
+            if (uname != null && !uname.isBlank()) {
+                userRepository.findByUsername(uname.toLowerCase()).ifPresent(u -> {
+                    if (u.getAvatarUrl() != null && !u.getAvatarUrl().isBlank()) {
+                        c.setAuthorAvatarUrl(u.getAvatarUrl());
+                    }
+                });
+            } else if (c.getAuthor() != null) {
+                userRepository.findByUsername(c.getAuthor().toLowerCase()).ifPresentOrElse(u -> {
+                    if (u.getAvatarUrl() != null && !u.getAvatarUrl().isBlank()) {
+                        c.setAuthorAvatarUrl(u.getAvatarUrl());
+                    }
+                }, () -> {
+                    userRepository.findFirstByName(c.getAuthor()).ifPresent(u -> {
+                        if (u.getAvatarUrl() != null && !u.getAvatarUrl().isBlank()) {
+                            c.setAuthorAvatarUrl(u.getAvatarUrl());
+                        }
+                    });
+                });
+            }
+        }
+        detail.setComments(comments);
 
         List<String> related = relatedTicketRepository.findByTicketId(ticket.getId()).stream()
                 .map(RelatedTicket::getRelatedTicketId)
