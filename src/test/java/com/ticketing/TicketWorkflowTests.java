@@ -226,4 +226,26 @@ public class TicketWorkflowTests {
         TicketDetailResponse detailAfter = ticketService.getTicketDetail(t1.getId());
         assertFalse(detailAfter.getRelatedTickets().contains(t2.getId()));
     }
+
+    @Test
+    @DisplayName("Normalized comment avatar: comment resolves latest user avatar dynamically at runtime")
+    void testNormalizedCommentAvatarResolution() {
+        CreateTicketRequest req = new CreateTicketRequest();
+        req.setProjectCode("ADH");
+        req.setTitle("Comment Avatar Test");
+        TicketDetailResponse ticket = ticketService.createTicket(req, "admin");
+
+        // Developer 1 posts a comment
+        TicketComment comment = ticketService.addComment(ticket.getId(), "developer1", "Dev One", "First feedback");
+        assertNotNull(comment);
+        assertEquals("/static/avatars/avatar-1.svg", comment.getAuthorAvatarUrl());
+
+        // Developer 1 updates avatar
+        userService.updateAvatar("developer1", "/static/avatars/avatar-custom.png");
+
+        // Fetch ticket details again - comment avatar must dynamically reflect new avatar
+        TicketDetailResponse updatedTicket = ticketService.getTicketDetail(ticket.getId());
+        assertEquals(1, updatedTicket.getComments().size());
+        assertEquals("/static/avatars/avatar-custom.png", updatedTicket.getComments().get(0).getAuthorAvatarUrl());
+    }
 }

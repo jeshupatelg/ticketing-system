@@ -375,17 +375,25 @@ public class TicketService {
      * Mutable for all phases!
      */
     @Transactional
-    public TicketComment addComment(String ticketId, String author, String authorAvatarUrl, String content) {
-        return addComment(ticketId, null, author, authorAvatarUrl, content);
+    public TicketComment addComment(String ticketId, String author, String content) {
+        return addComment(ticketId, null, author, content);
     }
 
     @Transactional
-    public TicketComment addComment(String ticketId, String authorUsername, String author, String authorAvatarUrl, String content) {
+    public TicketComment addComment(String ticketId, String authorUsername, String author, String content) {
         ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
-        TicketComment comment = new TicketComment(ticketId, authorUsername, author, authorAvatarUrl, content.trim());
-        return commentRepository.save(comment);
+        TicketComment comment = new TicketComment(ticketId, authorUsername, author, content.trim());
+        TicketComment saved = commentRepository.save(comment);
+        resolveCommentAvatar(saved);
+        return saved;
+    }
+
+    @Deprecated
+    @Transactional
+    public TicketComment addComment(String ticketId, String authorUsername, String author, String authorAvatarUrl, String content) {
+        return addComment(ticketId, authorUsername, author, content);
     }
 
     /**
@@ -548,28 +556,7 @@ public class TicketService {
         detail.setCheckpoints(checkpointRepository.findByTicketIdOrderByOrderIndexAsc(ticket.getId()));
 
         List<TicketComment> comments = commentRepository.findByTicketIdOrderByCreatedAtAsc(ticket.getId());
-        for (TicketComment c : comments) {
-            String uname = c.getAuthorUsername();
-            if (uname != null && !uname.isBlank()) {
-                userRepository.findByUsername(uname.toLowerCase()).ifPresent(u -> {
-                    if (u.getAvatarUrl() != null && !u.getAvatarUrl().isBlank()) {
-                        c.setAuthorAvatarUrl(u.getAvatarUrl());
-                    }
-                });
-            } else if (c.getAuthor() != null) {
-                userRepository.findByUsername(c.getAuthor().toLowerCase()).ifPresentOrElse(u -> {
-                    if (u.getAvatarUrl() != null && !u.getAvatarUrl().isBlank()) {
-                        c.setAuthorAvatarUrl(u.getAvatarUrl());
-                    }
-                }, () -> {
-                    userRepository.findFirstByName(c.getAuthor()).ifPresent(u -> {
-                        if (u.getAvatarUrl() != null && !u.getAvatarUrl().isBlank()) {
-                            c.setAuthorAvatarUrl(u.getAvatarUrl());
-                        }
-                    });
-                });
-            }
-        }
+        populateCommentAvatars(comments);
         detail.setComments(comments);
 
         List<String> related = relatedTicketRepository.findByTicketId(ticket.getId()).stream()
@@ -580,5 +567,45 @@ public class TicketService {
         detail.setAttachments(attachmentRepository.findByTicketIdOrderByUploadedAtAsc(ticket.getId()));
 
         return detail;
+    }
+
+    private void resolveCommentAvatar(TicketComment c) {
+        String uname = c.getAuthorUsername();
+        if (uname != null && !uname.isBlank()) {
+            userRepository.findByUsername(uname.toLowerCase()).ifPresent(u -> {
+                if (u.getAvatarUrl() != null && !u.getAvatarUrl().isBlank()) {
+                    c.setAuthorAvatarUrl(u.getAvatarUrl());
+                }
+            });
+        } else if (c.getAuthor() != null) {
+            userRepository.findByUsername(c.getAuthor().toLowerCase()).ifPresentOrElse(u -> {
+                if (u.getAvatarUrl() != null && !u.getAvatarUrl().isBlank()) {
+                    c.setAuthorAvatarUrl(u.getAvatarUrl());
+                }
+            }, () -> {
+                userRepository.findFirstByName(c.getAuthor()).ifPresent(u -> {
+                    if (u.getAvatarUrl() != null && !u.getAvatarUrl().isBlank()) {
+                        c.setAuthorAvatarUrl(u.getAvatarUrl());
+                    }
+                });
+            });
+        }
+    }
+
+    private void populateCommentAvatars(List<TicketComment> comments) {
+        if (comments == null || comments.isEmpty()) return;
+        Map<String, String> avatarCache = new HashMap<>();
+        for (TicketComment c : comments) {
+            String key = (c.getAuthorUsername() != null && !c.getAuthorUsername().isBlank())
+                    ? "u:" + c.getAuthorUsername().toLowerCase()
+                    : "a:" + (c.getAuthor() != null ? c.getAuthor().toLowerCase() : "");
+
+            if (avatarCache.containsKey(key)) {
+                c.setAuthorAvatarUrl(avatarCache.get(key));
+            } else {
+                resolveCommentAvatar(c);
+                avatarCache.put(key, c.getAuthorAvatarUrl());
+            }
+        }
     }
 }

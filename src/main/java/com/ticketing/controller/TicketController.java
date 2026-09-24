@@ -118,8 +118,7 @@ public class TicketController {
         }
         String authorUsername = currentUser.getUsername();
         String author = currentUser.getName();
-        String avatar = currentUser.getAvatarUrl();
-        return ResponseEntity.ok(ticketService.addComment(id, authorUsername, author, avatar, request.getContent()));
+        return ResponseEntity.ok(ticketService.addComment(id, authorUsername, author, request.getContent()));
     }
 
     // Related tickets

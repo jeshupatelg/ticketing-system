@@ -20,7 +20,7 @@ public class TicketComment {
     @Column(nullable = false)
     private String author;
 
-    @Column(name = "author_avatar_url")
+    @Transient
     private String authorAvatarUrl;
 
     @Column(nullable = false, columnDefinition = "TEXT")
@@ -31,17 +31,22 @@ public class TicketComment {
 
     public TicketComment() {}
 
-    public TicketComment(String ticketId, String author, String authorAvatarUrl, String content) {
-        this(ticketId, null, author, authorAvatarUrl, content);
+    public TicketComment(String ticketId, String author, String content) {
+        this(ticketId, null, author, content);
     }
 
-    public TicketComment(String ticketId, String authorUsername, String author, String authorAvatarUrl, String content) {
+    public TicketComment(String ticketId, String authorUsername, String author, String content) {
         this.ticketId = ticketId;
         this.authorUsername = authorUsername;
-        this.author = author;
-        this.authorAvatarUrl = authorAvatarUrl;
+        this.author = (author != null && !author.isBlank()) ? author : (authorUsername != null ? authorUsername : "Unknown");
         this.content = content;
         this.createdAt = Instant.now();
+    }
+
+    @Deprecated
+    public TicketComment(String ticketId, String authorUsername, String author, String authorAvatarUrl, String content) {
+        this(ticketId, authorUsername, author, content);
+        this.authorAvatarUrl = authorAvatarUrl;
     }
 
     public Long getId() { return id; }
