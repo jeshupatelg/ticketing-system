@@ -1,0 +1,17 @@
+# Agent artifacts and metadata
+.agent/
+
+# Build artifacts
+target/
+dist/
+node_modules/
+*.log
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Environment and uploads
+uploads/
+.env

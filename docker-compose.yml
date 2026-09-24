@@ -1,0 +1,77 @@
+services:
+  # ==========================================
+  # PostgreSQL Database Service
+  # ==========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: ticketing-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-ticketing_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-ticketing_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ticketing-net
+
+  # ==========================================
+  # Ticketing System Web Application
+  # ==========================================
+  ticketing-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ticketing-system:latest
+    container_name: ticketing-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Server & Gateway Host Prefix (e.g. /ticketing)
+      PORT: ${PORT:-8080}
+      HOST_PREFIX: ${HOST_PREFIX:-/ticketing}
+
+      # PostgreSQL Database Connection
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-ticketing_db}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      JPA_DDL_AUTO: ${JPA_DDL_AUTO:-update}
+
+      # Keycloak JWT relayed by APIGW
+      JWT_HEADER: ${JWT_HEADER:-Authorization}
+      JWT_PREFIX: ${JWT_PREFIX:-Bearer }
+      DEFAULT_DEV_USER: ${DEFAULT_DEV_USER:-admin}
+
+      # Attachment Configurable Limits
+      MAX_ATTACHMENT_COUNT: ${MAX_ATTACHMENT_COUNT:-10}
+      MAX_ATTACHMENT_SIZE_MB: ${MAX_ATTACHMENT_SIZE_MB:-20}
+      ATTACHMENT_STORAGE_DIR: /app/data/attachments
+      AVATAR_STORAGE_DIR: /app/data/avatars
+    ports:
+      - "${PORT:-8080}:8080"
+    volumes:
+      - app_attachments:/app/data/attachments
+      - app_avatars:/app/data/avatars
+    networks:
+      - ticketing-net
+
+networks:
+  ticketing-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  app_attachments:
+    driver: local
+  app_avatars:
+    driver: local
