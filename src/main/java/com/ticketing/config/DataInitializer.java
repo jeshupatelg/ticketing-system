@@ -38,6 +38,17 @@ public class DataInitializer implements CommandLineRunner {
         this.photoRepository = photoRepository;
     }
 
+    /**
+     * NON-CONFIGURABLE LOCAL DEV USER SEEDING FLAG:
+     * In server deployment, user persistence is strictly on-demand as users authenticate via Keycloak JWT.
+     * This flag is hardcoded to false (disabled) by default and CANNOT be enabled via
+     * application properties or environment variables.
+     * 
+     * To test locally with pre-seeded dummy users:
+     * A developer must manually flip this flag in source code to true, rebuild, and redeploy.
+     */
+    private static final boolean ENABLE_DEV_USER_SEEDING = false;
+
     @Override
     public void run(String... args) {
         // Ensure storage directories exist
@@ -56,15 +67,15 @@ public class DataInitializer implements CommandLineRunner {
             log.info("Initialized default project: Adhocs (ADH)");
         }
 
-        // 2. Ensure initial users exist
-        if (userRepository.count() == 0) {
+        // 2. Ensure initial users exist ONLY if local dev seeding is manually flipped to true in code
+        if (ENABLE_DEV_USER_SEEDING && userRepository.count() == 0) {
             userRepository.saveAll(List.of(
                     new User("admin", "admin", "System Administrator", "admin@ticketing.local", "/api/photos/default/avatar-1.svg"),
                     new User("alex", "alex", "Alex Mercer", "alex@ticketing.local", "/api/photos/default/avatar-2.svg"),
                     new User("sarah", "sarah", "Sarah Connor", "sarah@ticketing.local", "/api/photos/default/avatar-3.svg"),
                     new User("marcus", "marcus", "Marcus Wright", "marcus@ticketing.local", "/api/photos/default/avatar-4.svg")
             ));
-            log.info("Initialized default users");
+            log.info("Initialized default users (LOCAL DEV USER SEEDING ENABLED)");
         }
 
         // 3. Ensure predefined photos exist

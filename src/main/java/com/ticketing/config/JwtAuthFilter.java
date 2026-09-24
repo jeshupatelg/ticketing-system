@@ -29,14 +29,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final UserService userService;
     private final ObjectMapper objectMapper;
 
+    /**
+     * NON-CONFIGURABLE LOCAL DEV FALLBACK FLAG:
+     * In server deployment, Keycloak JWT is mandatory for all access.
+     * This flag is hardcoded to false (disabled) by default and CANNOT be enabled via
+     * application properties or environment variables.
+     * 
+     * To test locally without Keycloak/APIGW:
+     * A developer must manually flip this flag in source code to true, rebuild, and redeploy.
+     */
+    private static final boolean ENABLE_LOCAL_DEV_FALLBACK = false;
+
     @Value("${app.jwt.header-name:Authorization}")
     private String headerName;
 
     @Value("${app.jwt.token-prefix:Bearer }")
     private String tokenPrefix;
-
-    @Value("${app.jwt.default-user:admin}")
-    private String defaultUsername;
 
     public JwtAuthFilter(UserService userService, ObjectMapper objectMapper) {
         this.userService = userService;
@@ -54,15 +62,24 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if (authHeader != null && authHeader.startsWith(tokenPrefix)) {
                 String token = authHeader.substring(tokenPrefix.length()).trim();
                 user = parseUserFromJwt(token);
-            } else if (customUserHeader != null && !customUserHeader.isBlank()) {
+            } else if (customUserHeader != null && !customUserHeader.isBlank() && ENABLE_LOCAL_DEV_FALLBACK) {
+                // Custom header override only permitted if local dev fallback is manually enabled in code
                 String displayName = request.getHeader("X-User-Display");
                 String email = request.getHeader("X-User-Email");
                 user = userService.getOrCreateUser(customUserHeader, displayName != null ? displayName : customUserHeader, email);
             }
 
             if (user == null) {
-                // Fallback to default user for local testing or unauthenticated requests
-                user = userService.getOrCreateUser(defaultUsername, "System Admin", "admin@ticketing.local");
+                if (ENABLE_LOCAL_DEV_FALLBACK) {
+                    // Manual in-class dev fallback for offline testing without APIGW/Keycloak
+                    user = userService.getOrCreateUser("admin", "System Admin", "admin@ticketing.local");
+                } else if (isProtectedApiRequest(request)) {
+                    // In server deployment, reject unauthenticated API requests immediately with 401
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\": \"Unauthorized: Mandatory Keycloak JWT token missing or invalid\"}");
+                    return;
+                }
             }
 
             UserContextHolder.set(user);
@@ -70,6 +87,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         } finally {
             UserContextHolder.clear();
         }
+    }
+
+    private boolean isProtectedApiRequest(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        // Allow static assets and public default SVG photos
+        if (uri.contains("/photos/default/") || uri.endsWith(".svg") || uri.endsWith(".css") || uri.endsWith(".js") || uri.endsWith(".html")) {
+            return false;
+        }
+        // Gated API calls
+        return uri.contains("/api/");
     }
 
     private User parseUserFromJwt(String token) {

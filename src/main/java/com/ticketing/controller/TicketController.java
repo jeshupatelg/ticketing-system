@@ -36,7 +36,10 @@ public class TicketController {
     @PostMapping("/tickets")
     public ResponseEntity<TicketDetailResponse> createTicket(@Valid @RequestBody CreateTicketRequest request) {
         User currentUser = UserContextHolder.get();
-        String reporter = currentUser != null ? currentUser.getUsername() : "admin";
+        if (currentUser == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        String reporter = currentUser.getUsername();
         return ResponseEntity.ok(ticketService.createTicket(request, reporter));
     }
 
@@ -110,8 +113,11 @@ public class TicketController {
             @PathVariable String id,
             @Valid @RequestBody CommentRequest request) {
         User currentUser = UserContextHolder.get();
-        String author = currentUser != null ? currentUser.getName() : "Anonymous";
-        String avatar = currentUser != null ? currentUser.getAvatarUrl() : null;
+        if (currentUser == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        String author = currentUser.getName();
+        String avatar = currentUser.getAvatarUrl();
         return ResponseEntity.ok(ticketService.addComment(id, author, avatar, request.getContent()));
     }
 

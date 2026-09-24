@@ -27,7 +27,8 @@ public class UserController {
     public ResponseEntity<UserProfileResponse> getCurrentProfile() {
         User currentUser = UserContextHolder.get();
         if (currentUser == null) {
-            currentUser = userService.getOrCreateUser("admin", "System Admin", "admin@ticketing.local");
+            // In server deployment, unauthenticated profile access is prohibited
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
         }
         return ResponseEntity.ok(userService.toProfileResponse(currentUser));
     }
@@ -35,7 +36,10 @@ public class UserController {
     @PutMapping("/profile/theme")
     public ResponseEntity<UserProfileResponse> updateTheme(@Valid @RequestBody UpdateThemeRequest request) {
         User currentUser = UserContextHolder.get();
-        String username = currentUser != null ? currentUser.getUsername() : "admin";
+        if (currentUser == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        String username = currentUser.getUsername();
         User updated = userService.updateTheme(username, request.getTheme());
         return ResponseEntity.ok(userService.toProfileResponse(updated));
     }
@@ -43,7 +47,10 @@ public class UserController {
     @PutMapping("/profile/avatar")
     public ResponseEntity<UserProfileResponse> updateAvatar(@Valid @RequestBody UpdateAvatarRequest request) {
         User currentUser = UserContextHolder.get();
-        String username = currentUser != null ? currentUser.getUsername() : "admin";
+        if (currentUser == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        String username = currentUser.getUsername();
         User updated = userService.updateAvatar(username, request.getAvatarUrl());
         return ResponseEntity.ok(userService.toProfileResponse(updated));
     }

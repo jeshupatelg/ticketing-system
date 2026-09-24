@@ -31,7 +31,10 @@ public class AttachmentController {
             @RequestParam("file") MultipartFile file) throws IOException {
 
         User currentUser = UserContextHolder.get();
-        String uploader = currentUser != null ? currentUser.getUsername() : "anonymous";
+        if (currentUser == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        String uploader = currentUser.getUsername();
 
         TicketAttachment attachment = attachmentService.saveAttachment(ticketId, file, uploader);
         return ResponseEntity.ok(attachment);

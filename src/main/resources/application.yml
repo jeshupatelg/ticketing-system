@@ -28,7 +28,6 @@ app:
   jwt:
     header-name: ${JWT_HEADER:Authorization}
     token-prefix: ${JWT_PREFIX:Bearer }
-    default-user: ${DEFAULT_DEV_USER:admin}
   attachments:
     max-count: ${MAX_ATTACHMENT_COUNT:10}
     max-size-mb: ${MAX_ATTACHMENT_SIZE_MB:20}

@@ -49,7 +49,6 @@ services:
       # Keycloak JWT relayed by APIGW
       JWT_HEADER: ${JWT_HEADER:-Authorization}
       JWT_PREFIX: ${JWT_PREFIX:-Bearer }
-      DEFAULT_DEV_USER: ${DEFAULT_DEV_USER:-admin}
 
       # Attachment Configurable Limits
       MAX_ATTACHMENT_COUNT: ${MAX_ATTACHMENT_COUNT:-10}
