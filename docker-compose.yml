@@ -41,12 +41,12 @@ services:
       CONTEXT_PATH: ${CONTEXT_PATH:-}
 
       # PostgreSQL Database Connection (remote PostgreSQL instance)
-      DB_HOST: ${DB_HOST:-localhost}
+      DB_HOST: ${DB_HOST:-host.docker.internal}
       DB_PORT: ${DB_PORT:-5432}
       DB_NAME: ${DB_NAME:-ticketing_db}
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://${DB_HOST:-localhost}:${DB_PORT:-5432}/${DB_NAME:-ticketing_db}}
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://${DB_HOST:-host.docker.internal}:${DB_PORT:-5432}/${DB_NAME:-ticketing_db}}
+      DB_USER: ${DB_USER:-admin}
+      DB_PASSWORD: ${DB_PASSWORD:-admin}
       JPA_DDL_AUTO: ${JPA_DDL_AUTO:-update}
 
       # Keycloak JWT relayed by APIGW
@@ -58,6 +58,8 @@ services:
       MAX_ATTACHMENT_SIZE_MB: ${MAX_ATTACHMENT_SIZE_MB:-20}
       ATTACHMENT_STORAGE_DIR: /app/data/attachments
       AVATAR_STORAGE_DIR: /app/data/avatars
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${PORT:-8080}:8080"
     volumes:
