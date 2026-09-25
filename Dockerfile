@@ -28,6 +28,6 @@ USER appuser
 EXPOSE 8080
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
-  CMD curl -f http://localhost:8080/api/metrics || exit 1
+  CMD curl -f "http://localhost:8080${CONTEXT_PATH}/api/metrics" || curl -f "http://localhost:8080/api/metrics" || exit 1
 
 ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "/app/app.jar"]
