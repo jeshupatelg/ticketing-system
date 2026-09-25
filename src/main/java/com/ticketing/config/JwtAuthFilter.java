@@ -91,8 +91,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private boolean isProtectedApiRequest(HttpServletRequest request) {
         String uri = request.getRequestURI();
-        // Allow static assets and public default SVG photos
-        if (uri.contains("/photos/default/") || uri.endsWith(".svg") || uri.endsWith(".css") || uri.endsWith(".js") || uri.endsWith(".html")) {
+        // Allow static assets, public default SVG photos, and health checks
+        if (uri.endsWith("/health") || uri.contains("/photos/default/") || uri.endsWith(".svg") || uri.endsWith(".css") || uri.endsWith(".js") || uri.endsWith(".html") || uri.equals("/") || uri.endsWith("/ticketing") || uri.endsWith("/ticketing/")) {
             return false;
         }
         // Gated API calls
