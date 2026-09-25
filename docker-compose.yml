@@ -21,7 +21,7 @@ services:
   #     timeout: 3s
   #     retries: 5
   #   networks:
-  #     - ticketing-net
+  #     - gateway_net
 
   # ==========================================
   # Ticketing System Web Application
@@ -40,11 +40,11 @@ services:
       PORT: ${PORT:-8080}
       CONTEXT_PATH: ${CONTEXT_PATH:-}
 
-      # PostgreSQL Database Connection (remote PostgreSQL instance)
-      DB_HOST: ${DB_HOST:-host.docker.internal}
+      # PostgreSQL Database Connection (remote PostgreSQL instance on gateway_net)
+      DB_HOST: ${DB_HOST:-homeserver-pg}
       DB_PORT: ${DB_PORT:-5432}
       DB_NAME: ${DB_NAME:-ticketing_db}
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://${DB_HOST:-host.docker.internal}:${DB_PORT:-5432}/${DB_NAME:-ticketing_db}}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://${DB_HOST:-homeserver-pg}:${DB_PORT:-5432}/${DB_NAME:-ticketing_db}}
       DB_USER: ${DB_USER:-admin}
       DB_PASSWORD: ${DB_PASSWORD:-admin}
       JPA_DDL_AUTO: ${JPA_DDL_AUTO:-update}
@@ -66,11 +66,12 @@ services:
       - app_attachments:/app/data/attachments
       - app_avatars:/app/data/avatars
     networks:
-      - ticketing-net
+      - gateway_net
 
 networks:
-  ticketing-net:
-    driver: bridge
+  gateway_net:
+    name: gateway_net
+    external: true
 
 volumes:
   # postgres_data:
