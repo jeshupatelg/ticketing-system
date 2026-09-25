@@ -238,14 +238,14 @@ public class TicketWorkflowTests {
         // Developer 1 posts a comment
         TicketComment comment = ticketService.addComment(ticket.getId(), "developer1", "Dev One", "First feedback");
         assertNotNull(comment);
-        assertEquals("/static/avatars/avatar-1.svg", comment.getAuthorAvatarUrl());
+        assertEquals("/api/photos/default/avatar-1.svg", comment.getAuthorAvatarUrl());
 
         // Developer 1 updates avatar
-        userService.updateAvatar("developer1", "/static/avatars/avatar-custom.png");
+        userService.updateAvatar("developer1", "/api/photos/custom/avatar-custom.png");
 
         // Fetch ticket details again - comment avatar must dynamically reflect new avatar
         TicketDetailResponse updatedTicket = ticketService.getTicketDetail(ticket.getId());
         assertEquals(1, updatedTicket.getComments().size());
-        assertEquals("/static/avatars/avatar-custom.png", updatedTicket.getComments().get(0).getAuthorAvatarUrl());
+        assertEquals("/api/photos/custom/avatar-custom.png", updatedTicket.getComments().get(0).getAuthorAvatarUrl());
     }
 }

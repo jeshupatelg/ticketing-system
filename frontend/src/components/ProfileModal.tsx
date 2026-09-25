@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, Check, Palette, User as UserIcon } from 'lucide-react';
-import { api } from '../api';
+import { api, resolveUrl } from '../api';
 import { User, PredefinedPhoto } from '../types';
 
 interface Props {
@@ -143,7 +143,7 @@ export const ProfileModal: React.FC<Props> = ({
             <div className="space-y-4">
               <div className="flex items-center gap-4 p-3 bg-theme-bg rounded-lg border border-theme-border">
                 <img
-                  src={selectedAvatar || '/api/photos/default/avatar-1.svg'}
+                  src={resolveUrl(selectedAvatar, '/api/photos/default/avatar-1.svg')}
                   alt={currentUser.name}
                   className="w-14 h-14 rounded-full object-cover border-2 border-theme-border"
                 />
@@ -175,7 +175,7 @@ export const ProfileModal: React.FC<Props> = ({
                         selectedAvatar === p.url ? 'ring-2 ring-theme-primary bg-theme-surfaceHover' : 'hover:bg-theme-surfaceHover/50'
                       }`}
                     >
-                      <img src={p.url} alt={p.name} className="w-10 h-10 rounded-full object-cover" />
+                      <img src={resolveUrl(p.url)} alt={p.name} className="w-10 h-10 rounded-full object-cover" />
                       <span className="text-[10px] text-theme-muted truncate w-full text-center mt-1">{p.name}</span>
                       {selectedAvatar === p.url && (
                         <div className="absolute top-1 right-1 bg-theme-primary rounded-full p-0.5 text-white">
@@ -239,7 +239,7 @@ export const ProfileModal: React.FC<Props> = ({
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <img src={u.avatarUrl || '/api/photos/default/avatar-1.svg'} alt={u.name} className="w-7 h-7 rounded-full object-cover" />
+                      <img src={resolveUrl(u.avatarUrl, '/api/photos/default/avatar-1.svg')} alt={u.name} className="w-7 h-7 rounded-full object-cover" />
                       <div>
                         <span className="text-sm font-medium text-theme-text">{u.name}</span>
                         <span className="text-xs text-theme-muted ml-2">@{u.username}</span>

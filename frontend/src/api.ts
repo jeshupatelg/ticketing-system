@@ -14,15 +14,54 @@ import {
   PriorityType,
 } from './types';
 
-const getApiBase = () => {
+export const getContextPath = (): string => {
   const path = window.location.pathname;
   if (path.startsWith('/ticketing')) {
-    return '/ticketing/api';
+    return '/ticketing';
   }
-  return '/api';
+  const segments = path.split('/').filter(Boolean);
+  if (segments.length > 0 && !segments[0].includes('.')) {
+    return `/${segments[0]}`;
+  }
+  return '';
 };
 
-const API_BASE = getApiBase();
+export const getApiBase = (): string => {
+  const ctx = getContextPath();
+  return ctx ? `${ctx}/api` : '/api';
+};
+
+export const API_BASE = getApiBase();
+
+export const resolveUrl = (url?: string | null, fallback?: string): string => {
+  const target = url || fallback || '';
+  if (!target) return '';
+  if (
+    target.startsWith('http://') ||
+    target.startsWith('https://') ||
+    target.startsWith('data:') ||
+    target.startsWith('blob:')
+  ) {
+    return target;
+  }
+  let normalized = target;
+  if (normalized.includes('/static/avatars/')) {
+    normalized = normalized.replace('/static/avatars/', '/api/photos/default/');
+  }
+  if (normalized.startsWith('./')) {
+    normalized = normalized.substring(1);
+  } else if (!normalized.startsWith('/')) {
+    normalized = '/' + normalized;
+  }
+
+  const ctx = getContextPath();
+  if (ctx && normalized.startsWith('/')) {
+    if (!normalized.startsWith(ctx + '/')) {
+      return `${ctx}${normalized}`;
+    }
+  }
+  return normalized;
+};
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {

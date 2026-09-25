@@ -14,6 +14,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { Project, ScopeType, User } from '../types';
+import { resolveUrl } from '../api';
 
 interface Props {
   projects: Project[];
@@ -135,7 +136,7 @@ export const Gutter: React.FC<Props> = ({
           >
             <div className="flex items-center gap-2 truncate">
               {activeProject?.photoUrl ? (
-                <img src={activeProject.photoUrl} alt="" className="w-5 h-5 rounded object-cover flex-shrink-0" />
+                <img src={resolveUrl(activeProject.photoUrl)} alt="" className="w-5 h-5 rounded object-cover flex-shrink-0" />
               ) : (
                 <Folder className="w-4 h-4 flex-shrink-0 text-amber-400" />
               )}
@@ -171,7 +172,7 @@ export const Gutter: React.FC<Props> = ({
                       : 'text-theme-text hover:bg-theme-surfaceHover'
                   }`}
                 >
-                  <img src={p.photoUrl || '/api/photos/default/project-1.svg'} alt="" className="w-4 h-4 rounded object-cover flex-shrink-0" />
+                  <img src={resolveUrl(p.photoUrl, '/api/photos/default/project-1.svg')} alt="" className="w-4 h-4 rounded object-cover flex-shrink-0" />
                   <div className="truncate flex-1">
                     <span className="font-mono font-bold mr-1 text-[11px]">[{p.code}]</span>
                     <span>{p.name}</span>
@@ -311,7 +312,7 @@ export const Gutter: React.FC<Props> = ({
           title="User Profile & Theme"
         >
           {currentUser?.avatarUrl ? (
-            <img src={currentUser.avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover flex-shrink-0 border border-theme-border" />
+            <img src={resolveUrl(currentUser.avatarUrl)} alt="" className="w-5 h-5 rounded-full object-cover flex-shrink-0 border border-theme-border" />
           ) : (
             <UserIcon className="w-4 h-4 flex-shrink-0" />
           )}

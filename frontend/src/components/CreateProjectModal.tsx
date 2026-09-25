@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, Check } from 'lucide-react';
-import { api } from '../api';
+import { api, resolveUrl } from '../api';
 import { PredefinedPhoto, Project } from '../types';
 
 interface Props {
@@ -155,7 +155,7 @@ export const CreateProjectModal: React.FC<Props> = ({ isOpen, onClose, onProject
                     selectedPhoto === p.url ? 'ring-2 ring-theme-primary bg-theme-surfaceHover' : 'hover:bg-theme-surfaceHover/50'
                   }`}
                 >
-                  <img src={p.url} alt={p.name} className="w-8 h-8 rounded object-cover" />
+                  <img src={resolveUrl(p.url)} alt={p.name} className="w-8 h-8 rounded object-cover" />
                   <span className="text-[10px] text-theme-muted truncate w-full text-center mt-1">{p.name}</span>
                   {selectedPhoto === p.url && (
                     <div className="absolute top-1 right-1 bg-theme-primary rounded-full p-0.5 text-white">

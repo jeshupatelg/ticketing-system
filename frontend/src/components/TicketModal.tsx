@@ -19,7 +19,7 @@ import {
   CheckCircle2,
   Lock,
 } from 'lucide-react';
-import { api } from '../api';
+import { api, resolveUrl } from '../api';
 import {
   TicketDetail,
   TicketIdea,
@@ -400,7 +400,7 @@ export const TicketModal: React.FC<Props> = ({
                     {ticket.assignee ? (
                       <div className="flex items-center gap-1.5 font-medium text-theme-text">
                         <img
-                          src={ticket.assigneeAvatarUrl || '/api/photos/default/avatar-1.svg'}
+                          src={resolveUrl(ticket.assigneeAvatarUrl, '/api/photos/default/avatar-1.svg')}
                           alt=""
                           className="w-4 h-4 rounded-full object-cover"
                         />
@@ -430,7 +430,7 @@ export const TicketModal: React.FC<Props> = ({
                                 onClick={() => handleReassign(u.username)}
                                 className="w-full text-left px-2 py-1.5 text-xs text-theme-text hover:bg-theme-surfaceHover rounded flex items-center gap-1.5"
                               >
-                                <img src={u.avatarUrl || '/api/photos/default/avatar-1.svg'} alt="" className="w-4 h-4 rounded-full" />
+                                <img src={resolveUrl(u.avatarUrl, '/api/photos/default/avatar-1.svg')} alt="" className="w-4 h-4 rounded-full" />
                                 <span className="truncate">{u.name}</span>
                               </button>
                             ))}
@@ -812,7 +812,7 @@ export const TicketModal: React.FC<Props> = ({
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
                         <img
-                          src={c.authorAvatarUrl || '/api/photos/default/avatar-1.svg'}
+                          src={resolveUrl(c.authorAvatarUrl, '/api/photos/default/avatar-1.svg')}
                           alt=""
                           className="w-5 h-5 rounded-full object-cover"
                         />

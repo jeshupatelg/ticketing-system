@@ -92,5 +92,14 @@ public class DataInitializer implements CommandLineRunner {
             ));
             log.info("Initialized predefined photos");
         }
+
+        // 4. Fix any legacy avatar URLs for existing users
+        userRepository.findAll().forEach(user -> {
+            if (user.getAvatarUrl() != null && user.getAvatarUrl().contains("/static/avatars/")) {
+                user.setAvatarUrl("/api/photos/default/avatar-1.svg");
+                userRepository.save(user);
+                log.info("Repaired legacy avatar URL for user: {}", user.getUsername());
+            }
+        });
     }
 }

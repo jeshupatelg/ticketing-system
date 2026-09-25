@@ -10,6 +10,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { TicketSummary, PriorityType } from '../types';
+import { resolveUrl } from '../api';
 
 interface Props {
   ticket: TicketSummary;
@@ -156,7 +157,7 @@ export const TicketCard: React.FC<Props> = ({
               title={`Assigned to: ${ticket.assigneeName || ticket.assignee}`}
             >
               <img
-                src={ticket.assigneeAvatarUrl || '/api/photos/default/avatar-1.svg'}
+                src={resolveUrl(ticket.assigneeAvatarUrl, '/api/photos/default/avatar-1.svg')}
                 alt=""
                 className="w-5 h-5 rounded-full object-cover border border-theme-border"
               />

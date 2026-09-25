@@ -12,6 +12,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { Metrics, Project } from '../types';
+import { resolveUrl } from '../api';
 
 interface Props {
   metrics: Metrics | null;
@@ -181,7 +182,7 @@ export const MetricsDashboard: React.FC<Props> = ({
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div className="flex items-center gap-3">
                   <img
-                    src={p.photoUrl || '/api/photos/default/project-1.svg'}
+                    src={resolveUrl(p.photoUrl, '/api/photos/default/project-1.svg')}
                     alt=""
                     className="w-10 h-10 rounded-lg object-cover border border-theme-border"
                   />

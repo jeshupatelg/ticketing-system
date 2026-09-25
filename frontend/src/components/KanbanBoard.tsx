@@ -10,6 +10,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { TicketSummary, Project, ScopeType, FilterState } from '../types';
+import { resolveUrl } from '../api';
 import { TicketCard } from './TicketCard';
 
 interface Props {
@@ -124,7 +125,7 @@ export const KanbanBoard: React.FC<Props> = ({
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-theme-surface border border-theme-border flex items-center justify-center overflow-hidden">
             <img
-              src={project.photoUrl || '/api/photos/default/project-1.svg'}
+              src={resolveUrl(project.photoUrl, '/api/photos/default/project-1.svg')}
               alt=""
               className="w-full h-full object-cover"
             />

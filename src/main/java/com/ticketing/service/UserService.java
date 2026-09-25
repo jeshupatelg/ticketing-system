@@ -37,10 +37,14 @@ public class UserService {
                         existing.setEmail(email);
                         changed = true;
                     }
+                    if (existing.getAvatarUrl() == null || existing.getAvatarUrl().contains("/static/avatars/")) {
+                        existing.setAvatarUrl("/api/photos/default/avatar-1.svg");
+                        changed = true;
+                    }
                     return changed ? userRepository.save(existing) : existing;
                 })
                 .orElseGet(() -> {
-                    String defaultAvatar = "/static/avatars/avatar-1.svg";
+                    String defaultAvatar = "/api/photos/default/avatar-1.svg";
                     User newUser = new User(effectiveUsername, effectiveUsername, effectiveName, email, defaultAvatar);
                     return userRepository.save(newUser);
                 });
