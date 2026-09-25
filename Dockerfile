@@ -1,3 +1,15 @@
+# Multi-stage build
+FROM maven:3.9-eclipse-temurin-21 AS builder
+WORKDIR /build
+
+# Copy pom.xml and source code
+COPY pom.xml .
+COPY src ./src
+
+# Build production Spring Boot executable JAR
+RUN mvn clean package -DskipTests
+
+# Runtime stage
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
@@ -8,8 +20,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf 
 RUN groupadd -r appgroup && useradd -r -g appgroup -d /app appuser
 RUN mkdir -p /app/data/attachments /app/data/avatars && chown -R appuser:appgroup /app
 
-# Copy executable Spring Boot JAR with packaged frontend
-COPY --chown=appuser:appgroup target/ticketing-system-1.0.0.jar /app/app.jar
+# Copy executable Spring Boot JAR from builder stage
+COPY --from=builder --chown=appuser:appgroup /build/target/*.jar /app/app.jar
 
 USER appuser
 
