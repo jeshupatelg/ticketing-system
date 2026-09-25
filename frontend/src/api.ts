@@ -12,6 +12,7 @@ import {
   ScopeType,
   PhaseType,
   PriorityType,
+  TicketActivity,
 } from './types';
 
 export const getContextPath = (): string => {
@@ -141,6 +142,9 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ assignee }),
     }).then(res => handleResponse<TicketDetail>(res)),
+
+  getTicketActivities: (id: string): Promise<TicketActivity[]> =>
+    fetch(`${API_BASE}/tickets/${id}/activities`).then(res => handleResponse<TicketActivity[]>(res)),
 
   // Ideas (Plan)
   addIdea: (ticketId: string, content: string, active = true): Promise<TicketIdea> =>

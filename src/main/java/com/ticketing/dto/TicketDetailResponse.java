@@ -14,6 +14,7 @@ public class TicketDetailResponse extends TicketSummaryResponse {
     private List<TicketComment> comments = new ArrayList<>();
     private List<String> relatedTickets = new ArrayList<>();
     private List<TicketAttachment> attachments = new ArrayList<>();
+    private List<TicketActivityResponse> activities = new ArrayList<>();
 
     public TicketDetailResponse() {}
 
@@ -31,4 +32,7 @@ public class TicketDetailResponse extends TicketSummaryResponse {
 
     public List<TicketAttachment> getAttachments() { return attachments; }
     public void setAttachments(List<TicketAttachment> attachments) { this.attachments = attachments; }
+
+    public List<TicketActivityResponse> getActivities() { return activities; }
+    public void setActivities(List<TicketActivityResponse> activities) { this.activities = activities; }
 }

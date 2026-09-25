@@ -23,6 +23,8 @@ public class DataInitializer implements CommandLineRunner {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final PredefinedPhotoRepository photoRepository;
+    private final com.ticketing.repository.TicketRepository ticketRepository;
+    private final com.ticketing.service.TicketActivityService activityService;
 
     @Value("${app.attachments.storage-dir:./data/attachments}")
     private String attachmentStorageDir;
@@ -32,10 +34,14 @@ public class DataInitializer implements CommandLineRunner {
 
     public DataInitializer(ProjectRepository projectRepository,
                            UserRepository userRepository,
-                           PredefinedPhotoRepository photoRepository) {
+                           PredefinedPhotoRepository photoRepository,
+                           com.ticketing.repository.TicketRepository ticketRepository,
+                           com.ticketing.service.TicketActivityService activityService) {
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.photoRepository = photoRepository;
+        this.ticketRepository = ticketRepository;
+        this.activityService = activityService;
     }
 
     /**
@@ -99,6 +105,21 @@ public class DataInitializer implements CommandLineRunner {
                 user.setAvatarUrl("/api/photos/default/avatar-1.svg");
                 userRepository.save(user);
                 log.info("Repaired legacy avatar URL for user: {}", user.getUsername());
+            }
+        });
+
+        // 5. Ensure existing tickets have baseline creation activity
+        ticketRepository.findAll().forEach(ticket -> {
+            if (activityService.getActivitiesForTicket(ticket.getId()).isEmpty()) {
+                activityService.recordActivity(
+                        ticket.getId(),
+                        com.ticketing.model.TicketActivityType.TICKET_CREATED,
+                        ticket.getReporter() != null ? ticket.getReporter() : "admin",
+                        "Created ticket with priority " + ticket.getPriority(),
+                        ticket.getTitle(),
+                        ticket.getCreatedAt()
+                );
+                log.info("Initialized baseline activity for ticket: {}", ticket.getId());
             }
         });
     }

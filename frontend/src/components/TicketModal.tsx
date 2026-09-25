@@ -18,6 +18,11 @@ import {
   XCircle,
   CheckCircle2,
   Lock,
+  Activity,
+  UserCheck,
+  Edit3,
+  Link2,
+  Layers,
 } from 'lucide-react';
 import { api, resolveUrl } from '../api';
 import {
@@ -26,6 +31,8 @@ import {
   TicketCheckpoint,
   TicketComment,
   TicketAttachment,
+  TicketActivity,
+  TicketActivityType,
   PhaseType,
   User,
 } from '../types';
@@ -59,6 +66,66 @@ export const TicketModal: React.FC<Props> = ({
   const [selectedAssigneeForExec, setSelectedAssigneeForExec] = useState('');
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [reassignDropdownOpen, setReassignDropdownOpen] = useState(false);
+  const [activeDiscussionTab, setActiveDiscussionTab] = useState<'comments' | 'activity'>('comments');
+
+  const getActivityIcon = (type: TicketActivityType) => {
+    switch (type) {
+      case 'TICKET_CREATED':
+        return <Sparkles className="w-3.5 h-3.5 text-amber-400" />;
+      case 'TICKET_UPDATED':
+        return <Edit3 className="w-3.5 h-3.5 text-blue-400" />;
+      case 'TICKET_PROMOTED':
+        return <ArrowRight className="w-3.5 h-3.5 text-emerald-400" />;
+      case 'PHASE_TRANSITIONED':
+        return <Layers className="w-3.5 h-3.5 text-indigo-400" />;
+      case 'TICKET_COMPLETED':
+        return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />;
+      case 'TICKET_CANCELLED':
+        return <XCircle className="w-3.5 h-3.5 text-rose-400" />;
+      case 'TICKET_REASSIGNED':
+        return <UserCheck className="w-3.5 h-3.5 text-purple-400" />;
+      case 'IDEA_ADDED':
+      case 'IDEA_UPDATED':
+        return <Sparkles className="w-3.5 h-3.5 text-yellow-400" />;
+      case 'IDEA_DELETED':
+        return <Trash2 className="w-3.5 h-3.5 text-slate-400" />;
+      case 'CHECKPOINT_TOGGLED':
+        return <CheckSquare className="w-3.5 h-3.5 text-blue-400" />;
+      case 'COMMENT_ADDED':
+        return <MessageSquare className="w-3.5 h-3.5 text-sky-400" />;
+      case 'ATTACHMENT_UPLOADED':
+        return <Paperclip className="w-3.5 h-3.5 text-cyan-400" />;
+      case 'ATTACHMENT_DELETED':
+        return <Trash2 className="w-3.5 h-3.5 text-rose-400" />;
+      case 'RELATED_TICKET_LINKED':
+        return <Link2 className="w-3.5 h-3.5 text-indigo-400" />;
+      case 'RELATED_TICKET_UNLINKED':
+        return <Share2 className="w-3.5 h-3.5 text-slate-400" />;
+      default:
+        return <Activity className="w-3.5 h-3.5 text-theme-muted" />;
+    }
+  };
+
+  const getActivityBadgeClass = (type: TicketActivityType) => {
+    switch (type) {
+      case 'TICKET_COMPLETED':
+        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      case 'TICKET_CANCELLED':
+        return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+      case 'TICKET_PROMOTED':
+        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'PHASE_TRANSITIONED':
+        return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
+      case 'TICKET_REASSIGNED':
+        return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+      case 'COMMENT_ADDED':
+        return 'bg-sky-500/10 text-sky-400 border-sky-500/20';
+      case 'ATTACHMENT_UPLOADED':
+        return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
+      default:
+        return 'bg-theme-surfaceHover text-theme-muted border-theme-border';
+    }
+  };
 
   useEffect(() => {
     if (isOpen && ticketId) {
@@ -797,40 +864,104 @@ export const TicketModal: React.FC<Props> = ({
               </div>
             </div>
 
-            {/* Comments Section (Mutable for all phases!) */}
+            {/* Discussion & Activity Section */}
             <div className="space-y-3 pt-2 border-t border-theme-border">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-theme-primary" />
-                <h3 className="text-sm font-bold uppercase tracking-wider text-theme-text">
-                  Comments ({ticket.comments.length})
-                </h3>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1 bg-theme-bg p-1 rounded-lg border border-theme-border">
+                  <button
+                    type="button"
+                    onClick={() => setActiveDiscussionTab('comments')}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold transition-colors ${
+                      activeDiscussionTab === 'comments'
+                        ? 'bg-theme-surface text-theme-primary shadow-xs'
+                        : 'text-theme-muted hover:text-theme-text'
+                    }`}
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>Comments ({ticket.comments.length})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveDiscussionTab('activity')}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold transition-colors ${
+                      activeDiscussionTab === 'activity'
+                        ? 'bg-theme-surface text-theme-primary shadow-xs'
+                        : 'text-theme-muted hover:text-theme-text'
+                    }`}
+                  >
+                    <Activity className="w-3.5 h-3.5" />
+                    <span>Activity ({(ticket.activities || []).length})</span>
+                  </button>
+                </div>
               </div>
 
-              <div className="space-y-3 max-h-60 overflow-y-auto">
-                {ticket.comments.map(c => (
-                  <div key={c.id} className="p-3 bg-theme-bg border border-theme-border rounded-xl space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={resolveUrl(c.authorAvatarUrl, '/api/photos/default/avatar-1.svg')}
-                          alt=""
-                          className="w-5 h-5 rounded-full object-cover"
-                        />
-                        <span className="font-semibold text-theme-text">{c.author}</span>
+              {activeDiscussionTab === 'comments' ? (
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {ticket.comments.map(c => (
+                    <div key={c.id} className="p-3 bg-theme-bg border border-theme-border rounded-xl space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <img
+                            src={resolveUrl(c.authorAvatarUrl, '/api/photos/default/avatar-1.svg')}
+                            alt=""
+                            className="w-5 h-5 rounded-full object-cover"
+                          />
+                          <span className="font-semibold text-theme-text">{c.author}</span>
+                        </div>
+                        <span className="text-[10px] text-theme-muted">
+                          {new Date(c.createdAt).toLocaleString()}
+                        </span>
                       </div>
-                      <span className="text-[10px] text-theme-muted">
-                        {new Date(c.createdAt).toLocaleString()}
-                      </span>
+                      <p className="text-xs text-theme-text/90 whitespace-pre-wrap pl-7">{c.content}</p>
                     </div>
-                    <p className="text-xs text-theme-text/90 whitespace-pre-wrap pl-7">{c.content}</p>
-                  </div>
-                ))}
-                {ticket.comments.length === 0 && (
-                  <div className="p-3 text-center text-xs text-theme-muted border border-dashed border-theme-border rounded-lg">
-                    No comments yet. Comments can be added in all phases.
-                  </div>
-                )}
-              </div>
+                  ))}
+                  {ticket.comments.length === 0 && (
+                    <div className="p-3 text-center text-xs text-theme-muted border border-dashed border-theme-border rounded-lg">
+                      No comments yet. Comments can be added in all phases.
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                  {(ticket.activities && ticket.activities.length > 0) ? (
+                    ticket.activities.map(act => (
+                      <div key={act.id} className="p-2.5 bg-theme-bg border border-theme-border rounded-xl flex items-start gap-2.5 text-xs">
+                        <div className="mt-0.5 shrink-0">
+                          {getActivityIcon(act.activityType)}
+                        </div>
+                        <div className="flex-1 min-w-0 space-y-0.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <img
+                                src={resolveUrl(act.userAvatarUrl, '/api/photos/default/avatar-1.svg')}
+                                alt=""
+                                className="w-4 h-4 rounded-full object-cover shrink-0"
+                              />
+                              <span className="font-semibold text-theme-text truncate">{act.userDisplayName || act.username || 'System'}</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider shrink-0 border ${getActivityBadgeClass(act.activityType)}`}>
+                                {act.activityType.replace(/_/g, ' ')}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-theme-muted shrink-0">
+                              {new Date(act.timestamp).toLocaleString()}
+                            </span>
+                          </div>
+                          <p className="text-theme-text/90 text-xs">{act.description}</p>
+                          {act.details && (
+                            <p className="text-[11px] text-theme-muted italic bg-theme-surface/50 p-1.5 rounded border border-theme-border/50 break-words">
+                              {act.details}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-3 text-center text-xs text-theme-muted border border-dashed border-theme-border rounded-lg">
+                      No activity recorded for this ticket yet.
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Add Comment Form */}
               <form onSubmit={handleAddComment} className="flex gap-2">

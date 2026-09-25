@@ -23,6 +23,7 @@ public class TicketService {
     private final RelatedTicketRepository relatedTicketRepository;
     private final TicketAttachmentRepository attachmentRepository;
     private final UserRepository userRepository;
+    private final TicketActivityService activityService;
 
     public TicketService(TicketRepository ticketRepository,
                          ProjectRepository projectRepository,
@@ -32,7 +33,8 @@ public class TicketService {
                          TicketCommentRepository commentRepository,
                          RelatedTicketRepository relatedTicketRepository,
                          TicketAttachmentRepository attachmentRepository,
-                         UserRepository userRepository) {
+                         UserRepository userRepository,
+                         TicketActivityService activityService) {
         this.ticketRepository = ticketRepository;
         this.projectRepository = projectRepository;
         this.projectService = projectService;
@@ -42,6 +44,7 @@ public class TicketService {
         this.relatedTicketRepository = relatedTicketRepository;
         this.attachmentRepository = attachmentRepository;
         this.userRepository = userRepository;
+        this.activityService = activityService;
     }
 
     public List<TicketSummaryResponse> getTicketsByProjectAndScope(String projectCode, TicketScope scope, boolean includeAllCompleted) {
@@ -113,6 +116,15 @@ public class TicketService {
             }
         }
 
+        activityService.recordActivity(
+                ticketId,
+                TicketActivityType.TICKET_CREATED,
+                reporter,
+                "Created ticket with priority " + savedTicket.getPriority(),
+                savedTicket.getTitle(),
+                savedTicket.getCreatedAt()
+        );
+
         return toDetailResponse(savedTicket);
     }
 
@@ -125,20 +137,38 @@ public class TicketService {
             throw new IllegalStateException("Closed tickets are immutable and cannot be edited.");
         }
 
+        StringBuilder changes = new StringBuilder();
         if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            if (!request.getTitle().trim().equals(ticket.getTitle())) {
+                changes.append("title; ");
+            }
             ticket.setTitle(request.getTitle().trim());
         }
         if (request.getDescription() != null) {
+            changes.append("description; ");
             ticket.setDescription(request.getDescription());
         }
         if (request.getPriority() != null) {
+            if (request.getPriority() != ticket.getPriority()) {
+                changes.append("priority to ").append(request.getPriority()).append("; ");
+            }
             ticket.setPriority(request.getPriority());
         }
         if (request.getTags() != null) {
+            changes.append("tags; ");
             ticket.setTags(String.join(",", request.getTags()));
         }
 
-        return toDetailResponse(ticketRepository.save(ticket));
+        Ticket saved = ticketRepository.save(ticket);
+        activityService.recordActivity(
+                ticketId,
+                TicketActivityType.TICKET_UPDATED,
+                null,
+                changes.length() > 0 ? "Updated ticket: " + changes.toString().trim() : "Updated ticket details",
+                null
+        );
+
+        return toDetailResponse(saved);
     }
 
     /**
@@ -172,7 +202,16 @@ public class TicketService {
             }
         }
 
-        return toDetailResponse(ticketRepository.save(ticket));
+        Ticket saved = ticketRepository.save(ticket);
+        activityService.recordActivity(
+                ticketId,
+                TicketActivityType.TICKET_PROMOTED,
+                null,
+                "Promoted ticket to Live scope (Planned phase)",
+                null
+        );
+
+        return toDetailResponse(saved);
     }
 
     /**
@@ -191,7 +230,16 @@ public class TicketService {
         ticket.setCompleted(false);
         ticket.setCompletedAt(Instant.now());
 
-        return toDetailResponse(ticketRepository.save(ticket));
+        Ticket saved = ticketRepository.save(ticket);
+        activityService.recordActivity(
+                ticketId,
+                TicketActivityType.TICKET_CANCELLED,
+                null,
+                "Cancelled Plan ticket",
+                null
+        );
+
+        return toDetailResponse(saved);
     }
 
     /**
@@ -220,6 +268,9 @@ public class TicketService {
             throw new IllegalArgumentException("Cannot transition a Live ticket back to Plan phase.");
         }
 
+        TicketActivityType activityType = TicketActivityType.PHASE_TRANSITIONED;
+        String activityDesc = "Transitioned phase to " + targetPhase;
+
         if (targetPhase == TicketPhase.EXECUTION) {
             // First move from Planned to Execution when none assigned, prompts assignment necessarily
             String assignee = request.getAssignee();
@@ -231,15 +282,34 @@ public class TicketService {
                 throw new IllegalArgumentException("An assignee must be specified when transitioning to Execution.");
             }
             ticket.setPhase(TicketPhase.EXECUTION);
+            activityDesc = "Started Execution phase (assigned to @" + ticket.getAssignee() + ")";
         } else if (targetPhase == TicketPhase.PLANNED) {
             ticket.setPhase(TicketPhase.PLANNED);
+            activityDesc = "Moved back to Planned phase";
         } else if (targetPhase == TicketPhase.CLOSED) {
             ticket.setPhase(TicketPhase.CLOSED);
-            ticket.setCompleted(request.getCompleted() != null ? request.getCompleted() : true);
+            boolean completed = request.getCompleted() != null ? request.getCompleted() : true;
+            ticket.setCompleted(completed);
             ticket.setCompletedAt(Instant.now());
+            if (completed) {
+                activityType = TicketActivityType.TICKET_COMPLETED;
+                activityDesc = "Completed ticket successfully";
+            } else {
+                activityType = TicketActivityType.TICKET_CANCELLED;
+                activityDesc = "Cancelled ticket";
+            }
         }
 
-        return toDetailResponse(ticketRepository.save(ticket));
+        Ticket saved = ticketRepository.save(ticket);
+        activityService.recordActivity(
+                ticketId,
+                activityType,
+                null,
+                activityDesc,
+                targetPhase.name()
+        );
+
+        return toDetailResponse(saved);
     }
 
     /**
@@ -268,8 +338,19 @@ public class TicketService {
             throw new IllegalArgumentException("Ticket cannot be de-assigned in Execution phase.");
         }
 
+        String oldAssignee = ticket.getAssignee();
         ticket.setAssignee(newAssignee.trim().toLowerCase());
-        return toDetailResponse(ticketRepository.save(ticket));
+        Ticket saved = ticketRepository.save(ticket);
+
+        activityService.recordActivity(
+                ticketId,
+                TicketActivityType.TICKET_REASSIGNED,
+                null,
+                "Reassigned ticket to @" + newAssignee.trim().toLowerCase() + (oldAssignee != null ? " (was @" + oldAssignee + ")" : ""),
+                newAssignee.trim().toLowerCase()
+        );
+
+        return toDetailResponse(saved);
     }
 
     /**
@@ -290,7 +371,17 @@ public class TicketService {
 
         List<TicketIdea> existing = ideaRepository.findByTicketIdOrderByOrderIndexAsc(ticketId);
         TicketIdea idea = new TicketIdea(ticketId, request.getContent().trim(), request.isActive(), existing.size());
-        return ideaRepository.save(idea);
+        TicketIdea saved = ideaRepository.save(idea);
+
+        activityService.recordActivity(
+                ticketId,
+                TicketActivityType.IDEA_ADDED,
+                null,
+                "Added plan idea: " + saved.getContent(),
+                saved.getContent()
+        );
+
+        return saved;
     }
 
     @Transactional
@@ -316,7 +407,17 @@ public class TicketService {
             idea.setContent(request.getContent().trim());
         }
         idea.setActive(request.isActive());
-        return ideaRepository.save(idea);
+        TicketIdea saved = ideaRepository.save(idea);
+
+        activityService.recordActivity(
+                ticketId,
+                TicketActivityType.IDEA_UPDATED,
+                null,
+                "Updated plan idea: " + saved.getContent() + (saved.isActive() ? " (active)" : " (inactive)"),
+                saved.getContent()
+        );
+
+        return saved;
     }
 
     @Transactional
@@ -335,7 +436,16 @@ public class TicketService {
             throw new IllegalArgumentException("Idea does not belong to ticket: " + ticketId);
         }
 
+        String content = idea.getContent();
         ideaRepository.delete(idea);
+
+        activityService.recordActivity(
+                ticketId,
+                TicketActivityType.IDEA_DELETED,
+                null,
+                "Removed plan idea: " + content,
+                content
+        );
     }
 
     /**
@@ -367,12 +477,22 @@ public class TicketService {
         }
 
         checkpoint.setCompleted(completed);
-        return checkpointRepository.save(checkpoint);
+        TicketCheckpoint saved = checkpointRepository.save(checkpoint);
+
+        activityService.recordActivity(
+                ticketId,
+                TicketActivityType.CHECKPOINT_TOGGLED,
+                null,
+                (completed ? "Completed checkpoint: " : "Unchecked checkpoint: ") + checkpoint.getTitle(),
+                checkpoint.getTitle()
+        );
+
+        return saved;
     }
 
     /**
      * Comments:
-     * Mutable for all phases!
+     * Mutable for all phases (even throughout ticket existence after closed)!
      */
     @Transactional
     public TicketComment addComment(String ticketId, String author, String content) {
@@ -387,6 +507,20 @@ public class TicketService {
         TicketComment comment = new TicketComment(ticketId, authorUsername, author, content.trim());
         TicketComment saved = commentRepository.save(comment);
         resolveCommentAvatar(saved);
+
+        String preview = content.trim();
+        if (preview.length() > 60) {
+            preview = preview.substring(0, 57) + "...";
+        }
+
+        activityService.recordActivity(
+                ticketId,
+                TicketActivityType.COMMENT_ADDED,
+                authorUsername != null ? authorUsername : author,
+                "Added a comment: \"" + preview + "\"",
+                preview
+        );
+
         return saved;
     }
 
@@ -420,12 +554,28 @@ public class TicketService {
         if (relatedTicketRepository.findByTicketIdAndRelatedTicketId(relatedTicketId, ticketId).isEmpty()) {
             relatedTicketRepository.save(new RelatedTicket(relatedTicketId, ticketId));
         }
+
+        activityService.recordActivity(
+                ticketId,
+                TicketActivityType.RELATED_TICKET_LINKED,
+                null,
+                "Linked related ticket: " + relatedTicketId,
+                relatedTicketId
+        );
     }
 
     @Transactional
     public void unlinkRelatedTicket(String ticketId, String relatedTicketId) {
         relatedTicketRepository.deleteByTicketIdAndRelatedTicketId(ticketId, relatedTicketId);
         relatedTicketRepository.deleteByTicketIdAndRelatedTicketId(relatedTicketId, ticketId);
+
+        activityService.recordActivity(
+                ticketId,
+                TicketActivityType.RELATED_TICKET_UNLINKED,
+                null,
+                "Unlinked related ticket: " + relatedTicketId,
+                relatedTicketId
+        );
     }
 
     /**
@@ -466,6 +616,10 @@ public class TicketService {
         List<String> list = new ArrayList<>(tagSet);
         Collections.sort(list);
         return list;
+    }
+
+    public List<TicketActivityResponse> getTicketActivities(String ticketId) {
+        return activityService.getActivitiesForTicket(ticketId);
     }
 
     private TicketSummaryResponse toSummaryResponse(Ticket ticket) {
@@ -565,6 +719,7 @@ public class TicketService {
         detail.setRelatedTickets(related);
 
         detail.setAttachments(attachmentRepository.findByTicketIdOrderByUploadedAtAsc(ticket.getId()));
+        detail.setActivities(activityService.getActivitiesForTicket(ticket.getId()));
 
         return detail;
     }

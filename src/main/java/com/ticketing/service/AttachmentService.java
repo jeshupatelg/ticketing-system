@@ -1,5 +1,6 @@
 package com.ticketing.service;
 
+import com.ticketing.model.TicketActivityType;
 import com.ticketing.model.TicketAttachment;
 import com.ticketing.repository.TicketAttachmentRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +24,7 @@ import java.util.UUID;
 public class AttachmentService {
 
     private final TicketAttachmentRepository attachmentRepository;
+    private final TicketActivityService activityService;
 
     @Value("${app.attachments.max-count:10}")
     private int maxAttachmentCount;
@@ -33,8 +35,9 @@ public class AttachmentService {
     @Value("${app.attachments.storage-dir:./data/attachments}")
     private String storageDir;
 
-    public AttachmentService(TicketAttachmentRepository attachmentRepository) {
+    public AttachmentService(TicketAttachmentRepository attachmentRepository, TicketActivityService activityService) {
         this.attachmentRepository = attachmentRepository;
+        this.activityService = activityService;
     }
 
     public List<TicketAttachment> getAttachmentsForTicket(String ticketId) {
@@ -75,7 +78,15 @@ public class AttachmentService {
                 uploadedBy
         );
 
-        return attachmentRepository.save(attachment);
+        TicketAttachment saved = attachmentRepository.save(attachment);
+        activityService.recordActivity(
+                ticketId,
+                TicketActivityType.ATTACHMENT_UPLOADED,
+                uploadedBy,
+                "Uploaded attachment: " + originalFilename + " (" + String.format("%.1f", file.getSize() / 1024.0) + " KB)",
+                originalFilename
+        );
+        return saved;
     }
 
     public Resource loadAttachmentAsResource(Long attachmentId) throws MalformedURLException {
@@ -104,6 +115,13 @@ public class AttachmentService {
                 Files.deleteIfExists(Paths.get(att.getFilePath()));
             } catch (IOException ignored) {}
             attachmentRepository.delete(att);
+            activityService.recordActivity(
+                    att.getTicketId(),
+                    TicketActivityType.ATTACHMENT_DELETED,
+                    null,
+                    "Deleted attachment: " + att.getFileName(),
+                    att.getFileName()
+            );
         });
     }
 

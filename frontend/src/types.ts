@@ -85,12 +85,43 @@ export interface TicketSummary {
   attachmentCount: number;
 }
 
+export type TicketActivityType =
+  | 'TICKET_CREATED'
+  | 'TICKET_UPDATED'
+  | 'TICKET_PROMOTED'
+  | 'PHASE_TRANSITIONED'
+  | 'TICKET_COMPLETED'
+  | 'TICKET_CANCELLED'
+  | 'TICKET_REASSIGNED'
+  | 'IDEA_ADDED'
+  | 'IDEA_UPDATED'
+  | 'IDEA_DELETED'
+  | 'CHECKPOINT_TOGGLED'
+  | 'COMMENT_ADDED'
+  | 'ATTACHMENT_UPLOADED'
+  | 'ATTACHMENT_DELETED'
+  | 'RELATED_TICKET_LINKED'
+  | 'RELATED_TICKET_UNLINKED';
+
+export interface TicketActivity {
+  id: number;
+  ticketId: string;
+  activityType: TicketActivityType;
+  username: string;
+  userDisplayName?: string;
+  userAvatarUrl?: string;
+  description: string;
+  details?: string;
+  timestamp: string;
+}
+
 export interface TicketDetail extends TicketSummary {
   ideas: TicketIdea[];
   checkpoints: TicketCheckpoint[];
   comments: TicketComment[];
   relatedTickets: string[];
   attachments: TicketAttachment[];
+  activities: TicketActivity[];
 }
 
 export interface Metrics {

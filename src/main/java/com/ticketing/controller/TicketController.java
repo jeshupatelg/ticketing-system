@@ -149,4 +149,10 @@ public class TicketController {
     public ResponseEntity<List<String>> getAllTags() {
         return ResponseEntity.ok(ticketService.getAllTags());
     }
+
+    // Activities
+    @GetMapping("/tickets/{id}/activities")
+    public ResponseEntity<List<TicketActivityResponse>> getTicketActivities(@PathVariable String id) {
+        return ResponseEntity.ok(ticketService.getTicketActivities(id));
+    }
 }

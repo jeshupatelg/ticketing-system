@@ -248,4 +248,73 @@ public class TicketWorkflowTests {
         assertEquals(1, updatedTicket.getComments().size());
         assertEquals("/api/photos/custom/avatar-custom.png", updatedTicket.getComments().get(0).getAuthorAvatarUrl());
     }
+
+    @Test
+    @DisplayName("Activity tracking: tracks all events throughout ticket existence, including after closed")
+    void testActivityTrackingThroughoutLifecycleAndAfterClosed() {
+        CreateTicketRequest req = new CreateTicketRequest();
+        req.setProjectCode("ADH");
+        req.setTitle("Activity Tracking Test");
+        req.setIdeas(List.of("Idea 1", "Idea 2"));
+        TicketDetailResponse ticket = ticketService.createTicket(req, "admin");
+
+        // 1. Creation activity recorded
+        List<TicketActivityResponse> activities = ticketService.getTicketActivities(ticket.getId());
+        assertFalse(activities.isEmpty());
+        assertEquals(TicketActivityType.TICKET_CREATED, activities.get(activities.size() - 1).getActivityType());
+        assertEquals("admin", activities.get(activities.size() - 1).getUsername());
+
+        // 2. Add Idea activity
+        IdeaRequest ideaReq = new IdeaRequest();
+        ideaReq.setContent("Idea 3");
+        ideaReq.setActive(true);
+        ticketService.addIdea(ticket.getId(), ideaReq);
+
+        // 3. Promote ticket activity
+        ticketService.promoteTicket(ticket.getId());
+
+        // 4. Transition to Execution activity
+        TransitionPhaseRequest toExec = new TransitionPhaseRequest();
+        toExec.setPhase(TicketPhase.EXECUTION);
+        toExec.setAssignee("alex");
+        ticketService.transitionPhase(ticket.getId(), toExec);
+
+        // 5. Reassign ticket activity
+        ticketService.reassignTicket(ticket.getId(), "sarah");
+
+        // 6. Toggle checkpoint activity
+        TicketDetailResponse liveDetail = ticketService.getTicketDetail(ticket.getId());
+        assertFalse(liveDetail.getCheckpoints().isEmpty());
+        ticketService.toggleCheckpoint(ticket.getId(), liveDetail.getCheckpoints().get(0).getId(), true);
+
+        // 7. Transition to CLOSED activity
+        TransitionPhaseRequest toClose = new TransitionPhaseRequest();
+        toClose.setPhase(TicketPhase.CLOSED);
+        toClose.setCompleted(true);
+        ticketService.transitionPhase(ticket.getId(), toClose);
+
+        // 8. Add comment on CLOSED ticket - MUST STILL TRACK ACTIVITY!
+        ticketService.addComment(ticket.getId(), "alex", "Alex", "Post-closure comment check");
+
+        // Verify full timeline in ticket detail
+        TicketDetailResponse finalDetail = ticketService.getTicketDetail(ticket.getId());
+        List<TicketActivityResponse> finalActivities = finalDetail.getActivities();
+        assertNotNull(finalActivities);
+        assertTrue(finalActivities.size() >= 8);
+
+        // The most recent activity should be the comment added on the closed ticket
+        assertEquals(TicketActivityType.COMMENT_ADDED, finalActivities.get(0).getActivityType());
+        assertEquals("alex", finalActivities.get(0).getUsername());
+
+        // Check for presence of all key activity types
+        List<TicketActivityType> types = finalActivities.stream().map(TicketActivityResponse::getActivityType).toList();
+        assertTrue(types.contains(TicketActivityType.TICKET_CREATED));
+        assertTrue(types.contains(TicketActivityType.IDEA_ADDED));
+        assertTrue(types.contains(TicketActivityType.TICKET_PROMOTED));
+        assertTrue(types.contains(TicketActivityType.PHASE_TRANSITIONED));
+        assertTrue(types.contains(TicketActivityType.TICKET_REASSIGNED));
+        assertTrue(types.contains(TicketActivityType.CHECKPOINT_TOGGLED));
+        assertTrue(types.contains(TicketActivityType.TICKET_COMPLETED));
+        assertTrue(types.contains(TicketActivityType.COMMENT_ADDED));
+    }
 }
