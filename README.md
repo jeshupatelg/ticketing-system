@@ -1,4 +1,4 @@
-# Enterprise Ticketing System
+# Personal Ticketing System
 
 An enterprise-grade, high-performance Ticketing System with PostgreSQL persistence, Keycloak JWT on-demand user synchronization, configurable APIGW host prefix routing, and an interactive Kanban dashboard.
 
