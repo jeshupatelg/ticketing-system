@@ -119,6 +119,7 @@ An enterprise-grade, high-performance Ticketing System with PostgreSQL persisten
 | Variable | Default | Description |
 | :--- | :--- | :--- |
 | `HOST_PREFIX` | `/ticketing` | Context path when routed behind APIGW |
+| `CONTEXT_PATH` | `/ticketing` | Spring Boot servlet context path (`/ticketing` or empty for root) |
 | `PORT` | `8080` | Port for the application server |
 | `DB_HOST` | `localhost` | PostgreSQL host |
 | `DB_PORT` | `5432` | PostgreSQL port |

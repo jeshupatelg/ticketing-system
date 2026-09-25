@@ -23,6 +23,13 @@ public class HostPrefixForwardingFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        // If servlet container already has a non-empty context-path, Spring MVC handles routing natively
+        String contextPath = request.getContextPath();
+        if (contextPath != null && !contextPath.isBlank() && !"/".equals(contextPath)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String uri = request.getRequestURI();
 
         // Forward /ticketing/api/* -> /api/*

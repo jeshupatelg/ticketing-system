@@ -38,7 +38,7 @@ services:
     #     condition: service_healthy
     environment:
       PORT: ${PORT:-8080}
-      CONTEXT_PATH: ""
+      CONTEXT_PATH: ${CONTEXT_PATH:-}
 
       # PostgreSQL Database Connection (remote PostgreSQL instance)
       DB_HOST: ${DB_HOST:-localhost}
