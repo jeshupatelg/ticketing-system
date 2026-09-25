@@ -1,27 +1,27 @@
 services:
   # ==========================================
-  # PostgreSQL Database Service
+  # PostgreSQL Database Service (Commented out: PostgreSQL is hosted remotely)
   # ==========================================
-  postgres:
-    image: postgres:16-alpine
-    container_name: ticketing-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${DB_NAME:-ticketing_db}
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-    ports:
-      # Exposes port 5433 on the host to avoid collisions with local services on 5432
-      - "${HOST_DB_PORT:-5433}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-ticketing_db}"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    networks:
-      - ticketing-net
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: ticketing-postgres
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: ${DB_NAME:-ticketing_db}
+  #     POSTGRES_USER: ${DB_USER:-postgres}
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+  #   ports:
+  #     # Exposes port 5433 on the host to avoid collisions with local services on 5432
+  #     - "${HOST_DB_PORT:-5433}:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-ticketing_db}"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 5
+  #   networks:
+  #     - ticketing-net
 
   # ==========================================
   # Ticketing System Web Application
@@ -33,15 +33,18 @@ services:
     image: ticketing-system:latest
     container_name: ticketing-app
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
+    # depends_on:
+    #   postgres:
+    #     condition: service_healthy
     environment:
       PORT: ${PORT:-8080}
       CONTEXT_PATH: ""
 
-      # PostgreSQL Database Connection (inside Docker network, always 5432)
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-ticketing_db}
+      # PostgreSQL Database Connection (remote PostgreSQL instance)
+      DB_HOST: ${DB_HOST:-localhost}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-ticketing_db}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://${DB_HOST:-localhost}:${DB_PORT:-5432}/${DB_NAME:-ticketing_db}}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       JPA_DDL_AUTO: ${JPA_DDL_AUTO:-update}
@@ -68,8 +71,8 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
-    driver: local
+  # postgres_data:
+  #   driver: local
   app_attachments:
     driver: local
   app_avatars:
