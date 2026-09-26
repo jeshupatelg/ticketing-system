@@ -65,6 +65,19 @@ export const resolveUrl = (url?: string | null, fallback?: string): string => {
 };
 
 async function handleResponse<T>(res: Response): Promise<T> {
+  if (res.redirected && (res.url.includes('/openid-connect/auth') || res.url.includes('keycloak'))) {
+    window.location.href = res.url;
+    return new Promise(() => {});
+  }
+  const contentType = res.headers.get('content-type') || '';
+  if (
+    contentType.includes('text/html') &&
+    (res.url.includes('keycloak') || res.url.includes('/login') || res.url.includes('/auth'))
+  ) {
+    window.location.href = res.url;
+    return new Promise(() => {});
+  }
+
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(errorData.error || errorData.message || `Request failed with ${res.status}`);
