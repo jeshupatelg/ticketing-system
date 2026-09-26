@@ -23,11 +23,9 @@ public class TicketController {
     @GetMapping("/projects/{projectCode}/tickets")
     public ResponseEntity<List<TicketSummaryResponse>> getProjectTickets(
             @PathVariable String projectCode,
-            @RequestParam(name = "ticketScope", required = false) TicketScope ticketScope,
-            @RequestParam(name = "scope", required = false) TicketScope legacyScope,
+            @RequestParam(name = "ticketScope", defaultValue = "LIVE") TicketScope ticketScope,
             @RequestParam(defaultValue = "false") boolean includeAllCompleted) {
-        TicketScope resolvedScope = ticketScope != null ? ticketScope : (legacyScope != null ? legacyScope : TicketScope.LIVE);
-        return ResponseEntity.ok(ticketService.getTicketsByProjectAndScope(projectCode, resolvedScope, includeAllCompleted));
+        return ResponseEntity.ok(ticketService.getTicketsByProjectAndScope(projectCode, ticketScope, includeAllCompleted));
     }
 
     @GetMapping("/tickets/{id}")
