@@ -214,42 +214,51 @@ export const App: React.FC = () => {
       </main>
 
       {/* Ticket Detail Modal */}
-      <TicketModal
-        ticketId={selectedTicketId}
-        isOpen={Boolean(selectedTicketId)}
-        onClose={() => setSelectedTicketId(null)}
-        onTicketUpdated={() => {
-          loadTickets();
-          api.getMetrics().then(setMetrics).catch(console.error);
-        }}
-        users={users}
-        onOpenRelatedTicket={relId => setSelectedTicketId(relId)}
-      />
+      {selectedTicketId && (
+        <TicketModal
+          key={selectedTicketId}
+          ticketId={selectedTicketId}
+          isOpen={true}
+          onClose={() => setSelectedTicketId(null)}
+          onTicketUpdated={() => {
+            loadTickets();
+            api.getMetrics().then(setMetrics).catch(console.error);
+          }}
+          users={users}
+          onOpenRelatedTicket={relId => setSelectedTicketId(relId)}
+        />
+      )}
 
       {/* Create Project Modal */}
-      <CreateProjectModal
-        isOpen={isCreateProjectOpen}
-        onClose={() => setIsCreateProjectOpen(false)}
-        onProjectCreated={handleProjectCreated}
-      />
+      {isCreateProjectOpen && (
+        <CreateProjectModal
+          isOpen={true}
+          onClose={() => setIsCreateProjectOpen(false)}
+          onProjectCreated={handleProjectCreated}
+        />
+      )}
 
       {/* Create Ticket Modal */}
-      <CreateTicketModal
-        isOpen={isCreateTicketOpen}
-        onClose={() => setIsCreateTicketOpen(false)}
-        projects={projects}
-        activeProjectCode={activeProject?.code || null}
-        onTicketCreated={handleTicketCreated}
-      />
+      {isCreateTicketOpen && (
+        <CreateTicketModal
+          isOpen={true}
+          onClose={() => setIsCreateTicketOpen(false)}
+          projects={projects}
+          activeProjectCode={activeProject?.code || null}
+          onTicketCreated={handleTicketCreated}
+        />
+      )}
 
       {/* Profile & Theme Settings Modal */}
-      <ProfileModal
-        isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
-        currentUser={currentUser}
-        onUserUpdated={u => setCurrentUser(u)}
-        onThemeChanged={applyTheme}
-      />
+      {isProfileOpen && (
+        <ProfileModal
+          isOpen={true}
+          onClose={() => setIsProfileOpen(false)}
+          currentUser={currentUser}
+          onUserUpdated={u => setCurrentUser(u)}
+          onThemeChanged={applyTheme}
+        />
+      )}
     </div>
   );
 };
