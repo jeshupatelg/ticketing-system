@@ -20,7 +20,9 @@ window.fetch = async (...args) => {
       response.url.includes('/login'));
 
   if (isKeycloakRedirect || isKeycloakHtml) {
-    window.location.href = response.url;
+    // Reload the current document so the API Gateway intercepts a top-level HTML page request
+    // and saves the current context path in its RequestCache for post-login return
+    window.location.reload();
     // Halt further promise resolution while browser unloads the page
     return new Promise(() => {});
   }

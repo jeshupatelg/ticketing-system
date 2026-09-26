@@ -24,13 +24,15 @@ We implemented a **Global `window.fetch` Interceptor** in the frontend client ([
 2. **Detecting Auth Redirects**:
    - Checks `response.redirected && (response.url.includes('/openid-connect/auth') || response.url.includes('keycloak'))`.
    - Checks if an API request unexpectedly received `Content-Type: text/html` pointing to Keycloak login routes.
-3. **Promoting to Top-Level Window Navigation**:
+3. **Triggering Top-Level Page Reload (`window.location.reload()`)**:
    When an authentication redirect is detected, the interceptor executes:
    ```ts
-   window.location.href = response.url;
+   window.location.reload();
    return new Promise(() => {}); // Halts promise chain while browser unloads the document
    ```
-   Returning a pending promise ensures that calling components do not throw syntax errors or display error toasts in the brief window during which the browser unloads the page.
+   *Why `window.location.reload()` instead of `window.location.href = response.url`?*
+   - Navigating directly to `response.url` uses the Keycloak authorization request URL and `state` generated for the background API call (`/api/...`). Because API Gateways (Spring Security / OAuth2 proxy) explicitly refuse to save raw JSON `/api/**` endpoints in their `RequestCache`, post-login redirection falls back to the Gateway's default root URL (`/`).
+   - In contrast, calling `window.location.reload()` instructs the browser to send a top-level document request for the current page (e.g. `https://apigw.../ticketing/`). The Gateway intercepts this HTML page request, saves the full context path `/ticketing/` in its `RequestCache`, and redirects to Keycloak. After login, Keycloak redirects to the Gateway, which restores `/ticketing/` from its cache, seamlessly returning the user to the application instead of `/`.
 
 ## Alternatives Considered
 1. **Changing API Gateway to return 401 Unauthorized for `/api/**`**:
