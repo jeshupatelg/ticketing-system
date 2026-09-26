@@ -88,18 +88,32 @@ export const App: React.FC = () => {
     }
   };
 
+  // Clear tickets immediately when project or scope switches to avoid stale render
+  useEffect(() => {
+    setTickets([]);
+  }, [activeProject?.code, activeScope]);
+
   // Load tickets when project or scope changes
   const loadTickets = useCallback(async () => {
     if (!activeProject) return;
+    const targetProject = activeProject.code;
+    const targetScope = activeScope;
     try {
       const data = await api.getProjectTickets(
-        activeProject.code,
-        activeScope,
+        targetProject,
+        targetScope,
         filters.dateRange === 'all'
       );
-      setTickets(data);
+      // Only commit data if the user is still on the same project and scope
+      if (activeProject.code === targetProject && activeScope === targetScope) {
+        setTickets(data);
+      }
     } catch (err) {
       console.error('Failed to load tickets', err);
+      // Clear tickets on error if still on the same target
+      if (activeProject.code === targetProject && activeScope === targetScope) {
+        setTickets([]);
+      }
     }
   }, [activeProject, activeScope, filters.dateRange]);
 

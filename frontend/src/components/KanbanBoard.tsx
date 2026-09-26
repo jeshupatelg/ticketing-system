@@ -42,53 +42,55 @@ export const KanbanBoard: React.FC<Props> = ({
     filters.dateRange
   );
 
-  // Filter tickets according to FilterState
+  // Filter tickets according to Scope and FilterState
   const filteredTickets = useMemo(() => {
-    return tickets.filter(t => {
-      // Search
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        const matchesId = t.id.toLowerCase().includes(q);
-        const matchesTitle = t.title.toLowerCase().includes(q);
-        const matchesDesc = t.description?.toLowerCase().includes(q);
-        if (!matchesId && !matchesTitle && !matchesDesc) return false;
-      }
+    return tickets
+      .filter(t => t.scope === scope)
+      .filter(t => {
+        // Search
+        if (filters.search) {
+          const q = filters.search.toLowerCase();
+          const matchesId = t.id.toLowerCase().includes(q);
+          const matchesTitle = t.title.toLowerCase().includes(q);
+          const matchesDesc = t.description?.toLowerCase().includes(q);
+          if (!matchesId && !matchesTitle && !matchesDesc) return false;
+        }
 
-      // Assignee
-      if (filters.assignee) {
-        if (filters.assignee === 'unassigned') {
-          if (t.assignee) return false;
-        } else if (t.assignee !== filters.assignee) {
+        // Assignee
+        if (filters.assignee) {
+          if (filters.assignee === 'unassigned') {
+            if (t.assignee) return false;
+          } else if (t.assignee !== filters.assignee) {
+            return false;
+          }
+        }
+
+        // Phase
+        if (filters.phase && t.phase !== filters.phase) {
           return false;
         }
-      }
 
-      // Phase
-      if (filters.phase && t.phase !== filters.phase) {
-        return false;
-      }
-
-      // Tag
-      if (filters.tag && !t.tags.includes(filters.tag)) {
-        return false;
-      }
-
-      // Date Range (for completed tickets)
-      if (filters.dateRange && t.completedAt) {
-        const completedTime = new Date(t.completedAt).getTime();
-        const now = Date.now();
-        if (filters.dateRange === '1week') {
-          const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
-          if (completedTime < oneWeekAgo) return false;
-        } else if (filters.dateRange === '1month') {
-          const oneMonthAgo = now - 30 * 24 * 60 * 60 * 1000;
-          if (completedTime < oneMonthAgo) return false;
+        // Tag
+        if (filters.tag && !t.tags.includes(filters.tag)) {
+          return false;
         }
-      }
 
-      return true;
-    });
-  }, [tickets, filters]);
+        // Date Range (for completed tickets)
+        if (filters.dateRange && t.completedAt) {
+          const completedTime = new Date(t.completedAt).getTime();
+          const now = Date.now();
+          if (filters.dateRange === '1week') {
+            const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
+            if (completedTime < oneWeekAgo) return false;
+          } else if (filters.dateRange === '1month') {
+            const oneMonthAgo = now - 30 * 24 * 60 * 60 * 1000;
+            if (completedTime < oneMonthAgo) return false;
+          }
+        }
+
+        return true;
+      });
+  }, [tickets, filters, scope]);
 
   // When filter is applied, at most 5 or 6 tickets can only be shown per lane
   const MAX_PER_LANE_FILTERED = 6;
