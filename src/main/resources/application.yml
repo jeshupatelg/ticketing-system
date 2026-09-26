@@ -33,4 +33,7 @@ app:
     max-size-mb: ${MAX_ATTACHMENT_SIZE_MB:20}
     storage-dir: ${ATTACHMENT_STORAGE_DIR:./data/attachments}
   avatars:
+    max-size-mb: ${MAX_AVATAR_SIZE_MB:2}
     storage-dir: ${AVATAR_STORAGE_DIR:./data/avatars}
+  photos:
+    max-size-mb: ${MAX_PHOTO_SIZE_MB:${MAX_AVATAR_SIZE_MB:2}}

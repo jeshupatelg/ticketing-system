@@ -18,6 +18,8 @@ export const CreateProjectModal: React.FC<Props> = ({ isOpen, onClose, onProject
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [maxSizeMb, setMaxSizeMb] = useState<number>(2);
+
   useEffect(() => {
     if (isOpen) {
       api.getPhotos('PROJECT').then(data => {
@@ -25,6 +27,9 @@ export const CreateProjectModal: React.FC<Props> = ({ isOpen, onClose, onProject
         if (data.length > 0 && !selectedPhoto) {
           setSelectedPhoto(data[0].url);
         }
+      }).catch(console.error);
+      api.getPhotoConfig().then(cfg => {
+        if (cfg && cfg.maxSizeMb) setMaxSizeMb(cfg.maxSizeMb);
       }).catch(console.error);
     }
   }, [isOpen]);
@@ -63,6 +68,11 @@ export const CreateProjectModal: React.FC<Props> = ({ isOpen, onClose, onProject
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
+    const maxSizeBytes = maxSizeMb * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      setError(`Photo size exceeds maximum allowed size of ${maxSizeMb} MB.`);
+      return;
+    }
     try {
       const uploaded = await api.uploadPhoto(file, `${code || 'PRJ'} Badge`, 'PROJECT');
       setPhotos(prev => [uploaded, ...prev]);
@@ -165,6 +175,9 @@ export const CreateProjectModal: React.FC<Props> = ({ isOpen, onClose, onProject
                 </button>
               ))}
             </div>
+            <p className="text-[11px] text-theme-muted mt-1.5 italic">
+              Note: Max {maxSizeMb} MB (configurable).
+            </p>
           </div>
 
           <div className="flex justify-end gap-3 pt-3 border-t border-theme-border">

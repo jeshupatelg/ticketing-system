@@ -53,9 +53,10 @@ services:
       JWT_HEADER: ${JWT_HEADER:-Authorization}
       JWT_PREFIX: ${JWT_PREFIX:-Bearer }
 
-      # Attachment Configurable Limits
+      # Attachment & Avatar Configurable Limits
       MAX_ATTACHMENT_COUNT: ${MAX_ATTACHMENT_COUNT:-10}
       MAX_ATTACHMENT_SIZE_MB: ${MAX_ATTACHMENT_SIZE_MB:-20}
+      MAX_AVATAR_SIZE_MB: ${MAX_AVATAR_SIZE_MB:-2}
       ATTACHMENT_STORAGE_DIR: /app/data/attachments
       AVATAR_STORAGE_DIR: /app/data/avatars
     extra_hosts:

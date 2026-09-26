@@ -33,11 +33,15 @@ export const ProfileModal: React.FC<Props> = ({
   const [activeTab, setActiveTab] = useState<'profile' | 'theme' | 'switch'>('profile');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [maxSizeMb, setMaxSizeMb] = useState<number>(2);
 
   useEffect(() => {
     if (isOpen) {
       api.getPhotos('USER').then(setPhotos).catch(console.error);
       api.getUsers().then(setUsers).catch(console.error);
+      api.getPhotoConfig().then(cfg => {
+        if (cfg && cfg.maxSizeMb) setMaxSizeMb(cfg.maxSizeMb);
+      }).catch(console.error);
       if (currentUser) {
         setSelectedAvatar(currentUser.avatarUrl || '');
         setCurrentTheme(currentUser.themePreference || 'dark');
@@ -62,6 +66,11 @@ export const ProfileModal: React.FC<Props> = ({
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
+    const maxSizeBytes = maxSizeMb * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      alert(`Photo size exceeds maximum allowed size of ${maxSizeMb} MB.`);
+      return;
+    }
     try {
       const uploaded = await api.uploadPhoto(file, `${currentUser.username} Avatar`, 'USER');
       setPhotos(prev => [uploaded, ...prev]);
@@ -186,7 +195,7 @@ export const ProfileModal: React.FC<Props> = ({
                   ))}
                 </div>
                 <p className="text-[11px] text-theme-muted mt-1.5 italic">
-                  Note: Uploaded photos become available as options to all users and projects!
+                  Note: Upload limit {maxSizeMb} MB (configurable). Uploaded photos become available as options to all users and projects!
                 </p>
               </div>
             </div>

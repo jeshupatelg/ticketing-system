@@ -1,7 +1,9 @@
 package com.ticketing;
 
+import com.ticketing.controller.PhotoController;
 import com.ticketing.dto.*;
 import com.ticketing.model.*;
+import com.ticketing.service.PhotoService;
 import com.ticketing.service.ProjectService;
 import com.ticketing.service.TicketService;
 import com.ticketing.service.UserService;
@@ -10,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +33,12 @@ public class TicketWorkflowTests {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private PhotoService photoService;
+
+    @Autowired
+    private PhotoController photoController;
 
     @BeforeEach
     void setUp() {
@@ -316,5 +325,47 @@ public class TicketWorkflowTests {
         assertTrue(types.contains(TicketActivityType.CHECKPOINT_TOGGLED));
         assertTrue(types.contains(TicketActivityType.TICKET_COMPLETED));
         assertTrue(types.contains(TicketActivityType.COMMENT_ADDED));
+    }
+
+    @Test
+    @DisplayName("Photo upload within size limit succeeds")
+    void testPhotoUploadWithinLimit() throws Exception {
+        assertEquals(2L, photoService.getMaxSizeMb());
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test-avatar.png",
+                "image/png",
+                new byte[1024 * 100] // 100 KB
+        );
+        PredefinedPhoto photo = photoService.uploadCustomPhoto(file, "Test Avatar", "USER");
+        assertNotNull(photo);
+        assertTrue(photo.isCustom());
+        assertTrue(photo.getUrl().startsWith("/api/photos/custom/"));
+    }
+
+    @Test
+    @DisplayName("Photo upload exceeding configured limit is rejected with IllegalArgumentException")
+    void testPhotoUploadExceedingLimit() {
+        assertEquals(2L, photoService.getMaxSizeMb());
+        // 2MB + 1 byte
+        byte[] oversizedData = new byte[(int) (2 * 1024 * 1024 + 1)];
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "large-avatar.png",
+                "image/png",
+                oversizedData
+        );
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> {
+            photoService.uploadCustomPhoto(file, "Large Avatar", "USER");
+        });
+        assertTrue(ex.getMessage().contains("Photo size exceeds maximum allowed size of 2 MB"));
+    }
+
+    @Test
+    @DisplayName("Photo config endpoint returns configured max size in MB")
+    void testPhotoConfigEndpoint() {
+        var response = photoController.getConfig();
+        assertNotNull(response.getBody());
+        assertEquals(2L, response.getBody().get("maxSizeMb"));
     }
 }

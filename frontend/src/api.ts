@@ -213,6 +213,9 @@ export const api = {
   getPhotos: (category = 'ALL'): Promise<PredefinedPhoto[]> =>
     fetch(`${API_BASE}/photos?category=${category}`).then(res => handleResponse<PredefinedPhoto[]>(res)),
 
+  getPhotoConfig: (): Promise<{ maxSizeMb: number }> =>
+    fetch(`${API_BASE}/photos/config`).then(res => handleResponse<{ maxSizeMb: number }>(res)),
+
   uploadPhoto: (file: File, name: string, category = 'BOTH'): Promise<PredefinedPhoto> => {
     const formData = new FormData();
     formData.append('file', file);

@@ -26,8 +26,15 @@ public class PhotoService {
     @Value("${app.avatars.storage-dir:./data/avatars}")
     private String avatarStorageDir;
 
+    @Value("${app.avatars.max-size-mb:${app.photos.max-size-mb:2}}")
+    private long maxSizeMb;
+
     public PhotoService(PredefinedPhotoRepository photoRepository) {
         this.photoRepository = photoRepository;
+    }
+
+    public long getMaxSizeMb() {
+        return maxSizeMb;
     }
 
     public List<PredefinedPhoto> getAllPhotos(String category) {
@@ -39,6 +46,14 @@ public class PhotoService {
 
     @Transactional
     public PredefinedPhoto uploadCustomPhoto(MultipartFile file, String name, String category) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Cannot upload empty photo file.");
+        }
+
+        long maxSizeBytes = maxSizeMb * 1024 * 1024;
+        if (file.getSize() > maxSizeBytes) {
+            throw new IllegalArgumentException("Photo size exceeds maximum allowed size of " + maxSizeMb + " MB.");
+        }
         if (name == null || name.isBlank()) {
             name = file.getOriginalFilename();
             if (name == null) name = "Custom Photo";
