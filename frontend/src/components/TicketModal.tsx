@@ -23,6 +23,7 @@ import {
   Edit3,
   Link2,
   Layers,
+  Check,
 } from 'lucide-react';
 import { api, resolveUrl } from '../api';
 import {
@@ -61,6 +62,9 @@ export const TicketModal: React.FC<Props> = ({
   // Form states
   const [newComment, setNewComment] = useState('');
   const [newIdeaText, setNewIdeaText] = useState('');
+  const [newCheckpointText, setNewCheckpointText] = useState('');
+  const [editingCheckpointId, setEditingCheckpointId] = useState<number | null>(null);
+  const [editingCheckpointText, setEditingCheckpointText] = useState('');
   const [relatedTicketInput, setRelatedTicketInput] = useState('');
   const [assigneePromptOpen, setAssigneePromptOpen] = useState(false);
   const [selectedAssigneeForExec, setSelectedAssigneeForExec] = useState('');
@@ -88,6 +92,12 @@ export const TicketModal: React.FC<Props> = ({
       case 'IDEA_UPDATED':
         return <Sparkles className="w-3.5 h-3.5 text-yellow-400" />;
       case 'IDEA_DELETED':
+        return <Trash2 className="w-3.5 h-3.5 text-slate-400" />;
+      case 'CHECKPOINT_ADDED':
+        return <CheckSquare className="w-3.5 h-3.5 text-blue-400" />;
+      case 'CHECKPOINT_UPDATED':
+        return <Edit3 className="w-3.5 h-3.5 text-blue-400" />;
+      case 'CHECKPOINT_DELETED':
         return <Trash2 className="w-3.5 h-3.5 text-slate-400" />;
       case 'CHECKPOINT_TOGGLED':
         return <CheckSquare className="w-3.5 h-3.5 text-blue-400" />;
@@ -118,6 +128,12 @@ export const TicketModal: React.FC<Props> = ({
         return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
       case 'TICKET_REASSIGNED':
         return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+      case 'CHECKPOINT_ADDED':
+      case 'CHECKPOINT_UPDATED':
+      case 'CHECKPOINT_TOGGLED':
+        return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+      case 'CHECKPOINT_DELETED':
+        return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
       case 'COMMENT_ADDED':
         return 'bg-sky-500/10 text-sky-400 border-sky-500/20';
       case 'ATTACHMENT_UPLOADED':
@@ -304,11 +320,61 @@ export const TicketModal: React.FC<Props> = ({
     }
   };
 
-  // Checkpoint handlers (Live scope - always editable)
+  // Checkpoint handlers (Live scope - editable throughout except Completed/Cancelled)
   const handleToggleCheckpoint = async (cp: TicketCheckpoint) => {
-    if (!ticket) return;
+    if (!ticket || isClosed) return;
     try {
       await api.toggleCheckpoint(ticket.id, cp.id, !cp.completed);
+      await loadTicket();
+      onTicketUpdated();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleAddCheckpoint = async () => {
+    if (!ticket || !newCheckpointText.trim() || isClosed) return;
+    try {
+      await api.addCheckpoint(ticket.id, newCheckpointText.trim());
+      setNewCheckpointText('');
+      await loadTicket();
+      onTicketUpdated();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleStartEditCheckpoint = (cp: TicketCheckpoint, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingCheckpointId(cp.id);
+    setEditingCheckpointText(cp.title);
+  };
+
+  const handleSaveEditCheckpoint = async (checkpointId: number, e?: React.SyntheticEvent) => {
+    if (e) e.stopPropagation();
+    if (!ticket || !editingCheckpointText.trim() || isClosed) return;
+    try {
+      await api.updateCheckpoint(ticket.id, checkpointId, editingCheckpointText.trim());
+      setEditingCheckpointId(null);
+      setEditingCheckpointText('');
+      await loadTicket();
+      onTicketUpdated();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleCancelEditCheckpoint = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setEditingCheckpointId(null);
+    setEditingCheckpointText('');
+  };
+
+  const handleDeleteCheckpoint = async (checkpointId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!ticket || isClosed) return;
+    try {
+      await api.deleteCheckpoint(ticket.id, checkpointId);
       await loadTicket();
       onTicketUpdated();
     } catch (err: any) {
@@ -478,46 +544,48 @@ export const TicketModal: React.FC<Props> = ({
                       <span className="text-theme-muted italic">None (Unassigned)</span>
                     )}
 
-                    {/* Assign/Reassign option - editable throughout */}
-                    <div className="relative">
-                      <button
-                        onClick={() => setReassignDropdownOpen(!reassignDropdownOpen)}
-                        className="text-[11px] text-theme-primary hover:underline font-semibold ml-1"
-                      >
-                        {ticket.assignee ? 'Reassign' : 'Assign'}
-                      </button>
-                      {reassignDropdownOpen && (
-                        <div className="absolute right-0 top-full mt-1 w-48 bg-theme-surface border border-theme-border rounded-lg shadow-xl p-1 z-30 max-h-48 overflow-y-auto">
-                          <div className="px-2 py-1 text-[10px] uppercase font-bold text-theme-muted">
-                            Select Assignee
+                    {/* Assign/Reassign option - editable throughout except closed */}
+                    {!isClosed && (
+                      <div className="relative">
+                        <button
+                          onClick={() => setReassignDropdownOpen(!reassignDropdownOpen)}
+                          className="text-[11px] text-theme-primary hover:underline font-semibold ml-1"
+                        >
+                          {ticket.assignee ? 'Reassign' : 'Assign'}
+                        </button>
+                        {reassignDropdownOpen && (
+                          <div className="absolute right-0 top-full mt-1 w-48 bg-theme-surface border border-theme-border rounded-lg shadow-xl p-1 z-30 max-h-48 overflow-y-auto">
+                            <div className="px-2 py-1 text-[10px] uppercase font-bold text-theme-muted">
+                              Select Assignee
+                            </div>
+                            {ticket.assignee && (
+                              <button
+                                onClick={() => {
+                                  handleReassign('');
+                                  setReassignDropdownOpen(false);
+                                }}
+                                className="w-full text-left px-2 py-1.5 text-xs text-rose-400 hover:bg-theme-surfaceHover rounded flex items-center gap-1.5"
+                              >
+                                <span className="italic">Unassign</span>
+                              </button>
+                            )}
+                            {users.map(u => (
+                              <button
+                                key={u.username}
+                                onClick={() => {
+                                  handleReassign(u.username);
+                                  setReassignDropdownOpen(false);
+                                }}
+                                className="w-full text-left px-2 py-1.5 text-xs text-theme-text hover:bg-theme-surfaceHover rounded flex items-center gap-1.5"
+                              >
+                                <img src={resolveUrl(u.avatarUrl, '/api/photos/default/avatar-1.svg')} alt="" className="w-4 h-4 rounded-full" />
+                                <span className="truncate">{u.name}</span>
+                              </button>
+                            ))}
                           </div>
-                          {ticket.assignee && (
-                            <button
-                              onClick={() => {
-                                handleReassign('');
-                                setReassignDropdownOpen(false);
-                              }}
-                              className="w-full text-left px-2 py-1.5 text-xs text-rose-400 hover:bg-theme-surfaceHover rounded flex items-center gap-1.5"
-                            >
-                              <span className="italic">Unassign</span>
-                            </button>
-                          )}
-                          {users.map(u => (
-                            <button
-                              key={u.username}
-                              onClick={() => {
-                                handleReassign(u.username);
-                                setReassignDropdownOpen(false);
-                              }}
-                              className="w-full text-left px-2 py-1.5 text-xs text-theme-text hover:bg-theme-surfaceHover rounded flex items-center gap-1.5"
-                            >
-                              <img src={resolveUrl(u.avatarUrl, '/api/photos/default/avatar-1.svg')} alt="" className="w-4 h-4 rounded-full" />
-                              <span className="truncate">{u.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -740,37 +808,141 @@ export const TicketModal: React.FC<Props> = ({
                 </div>
 
                 <div className="space-y-2">
-                  {ticket.checkpoints.map(cp => (
-                    <div
-                      key={cp.id}
-                      onClick={() => handleToggleCheckpoint(cp)}
-                      className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer hover:bg-theme-surfaceHover ${
-                        cp.completed
-                          ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-200'
-                          : 'bg-theme-bg border-theme-border text-theme-text'
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        className="text-theme-muted flex-shrink-0"
+                  {ticket.checkpoints.map(cp => {
+                    const isEditing = editingCheckpointId === cp.id;
+                    return (
+                      <div
+                        key={cp.id}
+                        onClick={() => {
+                          if (!isClosed && !isEditing) {
+                            handleToggleCheckpoint(cp);
+                          }
+                        }}
+                        className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                          isClosed || isEditing ? 'cursor-default' : 'cursor-pointer hover:bg-theme-surfaceHover'
+                        } ${
+                          cp.completed
+                            ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-200'
+                            : 'bg-theme-bg border-theme-border text-theme-text'
+                        }`}
                       >
-                        {cp.completed ? (
-                          <CheckSquare className="w-4 h-4 text-emerald-400" />
-                        ) : (
-                          <Square className="w-4 h-4 text-theme-muted" />
+                        <div className="flex items-center gap-3 flex-1 min-w-0 mr-2">
+                          <button
+                            type="button"
+                            disabled={isClosed}
+                            onClick={e => {
+                              e.stopPropagation();
+                              if (!isClosed) handleToggleCheckpoint(cp);
+                            }}
+                            className="text-theme-muted flex-shrink-0 disabled:opacity-50"
+                          >
+                            {cp.completed ? (
+                              <CheckSquare className="w-4 h-4 text-emerald-400" />
+                            ) : (
+                              <Square className="w-4 h-4 text-theme-muted" />
+                            )}
+                          </button>
+
+                          {isEditing ? (
+                            <div className="flex items-center gap-2 flex-1" onClick={e => e.stopPropagation()}>
+                              <input
+                                type="text"
+                                autoFocus
+                                value={editingCheckpointText}
+                                onChange={e => setEditingCheckpointText(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleSaveEditCheckpoint(cp.id);
+                                  } else if (e.key === 'Escape') {
+                                    handleCancelEditCheckpoint();
+                                  }
+                                }}
+                                className="flex-1 px-2 py-1 bg-theme-surface border border-theme-primary rounded text-xs text-theme-text focus:outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={e => handleSaveEditCheckpoint(cp.id, e)}
+                                className="text-emerald-400 hover:text-emerald-300 p-1 rounded"
+                                title="Save"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleCancelEditCheckpoint}
+                                className="text-theme-muted hover:text-theme-text p-1 rounded"
+                                title="Cancel"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <span
+                              className={`text-sm truncate ${
+                                cp.completed ? 'line-through text-theme-muted' : 'font-medium'
+                              }`}
+                            >
+                              {cp.title}
+                            </span>
+                          )}
+                        </div>
+
+                        {!isClosed && !isEditing && (
+                          <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={e => handleStartEditCheckpoint(cp, e)}
+                              className="text-theme-muted hover:text-theme-primary p-1 rounded transition-colors"
+                              title="Edit checkpoint"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={e => handleDeleteCheckpoint(cp.id, e)}
+                              className="text-theme-muted hover:text-red-400 p-1 rounded transition-colors"
+                              title="Delete checkpoint"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         )}
-                      </button>
-                      <span className={`text-sm ${cp.completed ? 'line-through text-theme-muted' : 'font-medium'}`}>
-                        {cp.title}
-                      </span>
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
+
                   {ticket.checkpoints.length === 0 && (
                     <div className="p-4 text-center text-xs text-theme-muted border border-dashed border-theme-border rounded-lg">
-                      No checkpoints active for this ticket.
+                      No checkpoints active for this ticket. Add checkpoints below.
                     </div>
                   )}
                 </div>
+
+                {!isClosed && (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newCheckpointText}
+                      onChange={e => setNewCheckpointText(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddCheckpoint();
+                        }
+                      }}
+                      placeholder="Add a checkpoint..."
+                      className="flex-1 px-3 py-2 bg-theme-bg border border-theme-border rounded-lg text-xs text-theme-text placeholder-theme-muted focus:outline-none focus:ring-1 focus:ring-theme-primary"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddCheckpoint}
+                      className="px-4 py-2 bg-theme-surfaceHover text-theme-text border border-theme-border rounded-lg text-xs font-semibold hover:bg-theme-border flex items-center gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Checkpoint
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

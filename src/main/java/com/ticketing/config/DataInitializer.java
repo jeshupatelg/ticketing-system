@@ -64,13 +64,14 @@ public class DataInitializer implements CommandLineRunner {
         new File(attachmentStorageDir).mkdirs();
         new File(avatarStorageDir).mkdirs();
 
-        // Ensure tickets_phase_check permits all TicketPhase values
+        // Ensure check constraints permit all enum values
         try {
             jdbcTemplate.execute("ALTER TABLE tickets DROP CONSTRAINT IF EXISTS tickets_phase_check");
             jdbcTemplate.execute("ALTER TABLE tickets ADD CONSTRAINT tickets_phase_check CHECK (phase IN ('PLAN', 'PLANNED', 'EXECUTION', 'TEST', 'CLOSED'))");
-            log.info("Verified and updated tickets_phase_check constraint");
+            jdbcTemplate.execute("ALTER TABLE ticket_activities DROP CONSTRAINT IF EXISTS ticket_activities_activity_type_check");
+            log.info("Verified and updated schema check constraints");
         } catch (Exception e) {
-            log.warn("Could not update tickets_phase_check constraint: {}", e.getMessage());
+            log.warn("Could not update schema check constraints: {}", e.getMessage());
         }
 
         // 1. Ensure default project 'Adhocs' exists

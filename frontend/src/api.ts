@@ -178,12 +178,29 @@ export const api = {
     fetch(`${API_BASE}/tickets/${ticketId}/ideas/${ideaId}`, { method: 'DELETE' }).then(res => handleResponse<void>(res)),
 
   // Checkpoints (Live)
+  addCheckpoint: (ticketId: string, title: string): Promise<TicketCheckpoint> =>
+    fetch(`${API_BASE}/tickets/${ticketId}/checkpoints`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    }).then(res => handleResponse<TicketCheckpoint>(res)),
+
   toggleCheckpoint: (ticketId: string, checkpointId: number, completed: boolean): Promise<TicketCheckpoint> =>
     fetch(`${API_BASE}/tickets/${ticketId}/checkpoints/${checkpointId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ completed }),
     }).then(res => handleResponse<TicketCheckpoint>(res)),
+
+  updateCheckpoint: (ticketId: string, checkpointId: number, title: string): Promise<TicketCheckpoint> =>
+    fetch(`${API_BASE}/tickets/${ticketId}/checkpoints/${checkpointId}/title`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    }).then(res => handleResponse<TicketCheckpoint>(res)),
+
+  deleteCheckpoint: (ticketId: string, checkpointId: number): Promise<void> =>
+    fetch(`${API_BASE}/tickets/${ticketId}/checkpoints/${checkpointId}`, { method: 'DELETE' }).then(res => handleResponse<void>(res)),
 
   // Comments
   addComment: (ticketId: string, content: string): Promise<TicketComment> =>

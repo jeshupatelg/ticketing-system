@@ -99,6 +99,13 @@ public class TicketController {
     }
 
     // Checkpoints
+    @PostMapping("/tickets/{id}/checkpoints")
+    public ResponseEntity<TicketCheckpoint> addCheckpoint(
+            @PathVariable String id,
+            @Valid @RequestBody CheckpointRequest request) {
+        return ResponseEntity.ok(ticketService.addCheckpoint(id, request));
+    }
+
     @PutMapping("/tickets/{id}/checkpoints/{checkpointId}")
     public ResponseEntity<TicketCheckpoint> toggleCheckpoint(
             @PathVariable String id,
@@ -106,6 +113,23 @@ public class TicketController {
             @RequestBody CheckpointToggleRequest request) {
         return ResponseEntity.ok(ticketService.toggleCheckpoint(id, checkpointId, request.isCompleted()));
     }
+
+    @PutMapping("/tickets/{id}/checkpoints/{checkpointId}/title")
+    public ResponseEntity<TicketCheckpoint> updateCheckpoint(
+            @PathVariable String id,
+            @PathVariable Long checkpointId,
+            @Valid @RequestBody CheckpointRequest request) {
+        return ResponseEntity.ok(ticketService.updateCheckpoint(id, checkpointId, request));
+    }
+
+    @DeleteMapping("/tickets/{id}/checkpoints/{checkpointId}")
+    public ResponseEntity<Void> deleteCheckpoint(
+            @PathVariable String id,
+            @PathVariable Long checkpointId) {
+        ticketService.deleteCheckpoint(id, checkpointId);
+        return ResponseEntity.noContent().build();
+    }
+
 
     // Comments
     @PostMapping("/tickets/{id}/comments")

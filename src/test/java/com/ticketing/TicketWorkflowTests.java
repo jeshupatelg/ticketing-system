@@ -393,4 +393,74 @@ public class TicketWorkflowTests {
         assertNotNull(response.getBody());
         assertEquals(2L, response.getBody().get("maxSizeMb"));
     }
+
+    @Test
+    @DisplayName("Checkpoints can be added, updated, and deleted in live scope, but assignment and checkpoints are immutable when ticket is closed")
+    void testCheckpointOperationsAndClosedImmutability() {
+        CreateTicketRequest req = new CreateTicketRequest();
+        req.setProjectCode("ADH");
+        req.setTitle("Checkpoint test ticket");
+        req.setDescription("Testing checkpoint operations");
+        req.setPriority(TicketPriority.HIGH);
+        req.setIdeas(List.of("Initial Checkpoint"));
+
+        TicketDetailResponse ticket = ticketService.createTicket(req, "admin");
+        ticketService.promoteTicket(ticket.getId());
+
+        // 1. Add checkpoint
+        CheckpointRequest addReq = new CheckpointRequest();
+        addReq.setTitle("First Checkpoint");
+        TicketCheckpoint cp1 = ticketService.addCheckpoint(ticket.getId(), addReq);
+        assertEquals("First Checkpoint", cp1.getTitle());
+
+        // 2. Update checkpoint title
+        CheckpointRequest updateReq = new CheckpointRequest();
+        updateReq.setTitle("Updated Checkpoint Title");
+        TicketCheckpoint updatedCp = ticketService.updateCheckpoint(ticket.getId(), cp1.getId(), updateReq);
+        assertEquals("Updated Checkpoint Title", updatedCp.getTitle());
+
+        // 3. Toggle checkpoint
+        TicketCheckpoint toggled = ticketService.toggleCheckpoint(ticket.getId(), cp1.getId(), true);
+        assertTrue(toggled.isCompleted());
+
+        // 4. Reassign during active lifecycle
+        TicketDetailResponse reassigned = ticketService.reassignTicket(ticket.getId(), "developer2");
+        assertEquals("developer2", reassigned.getAssignee());
+
+        // 5. Add second checkpoint and delete it
+        CheckpointRequest addReq2 = new CheckpointRequest();
+        addReq2.setTitle("Second Checkpoint");
+        TicketCheckpoint cp2 = ticketService.addCheckpoint(ticket.getId(), addReq2);
+        ticketService.deleteCheckpoint(ticket.getId(), cp2.getId());
+
+        // 6. Transition through EXECUTION and TEST to CLOSED (Completed)
+        TransitionPhaseRequest toExec = new TransitionPhaseRequest();
+        toExec.setPhase(TicketPhase.EXECUTION);
+        ticketService.transitionPhase(ticket.getId(), toExec);
+
+        TransitionPhaseRequest toTest = new TransitionPhaseRequest();
+        toTest.setPhase(TicketPhase.TEST);
+        ticketService.transitionPhase(ticket.getId(), toTest);
+
+        TransitionPhaseRequest toClose = new TransitionPhaseRequest();
+        toClose.setPhase(TicketPhase.CLOSED);
+        toClose.setCompleted(true);
+        ticketService.transitionPhase(ticket.getId(), toClose);
+
+        // 7. Verify modifications are rejected when CLOSED
+        assertThrows(IllegalStateException.class, () ->
+                ticketService.reassignTicket(ticket.getId(), "developer1"));
+
+        assertThrows(IllegalStateException.class, () ->
+                ticketService.addCheckpoint(ticket.getId(), addReq));
+
+        assertThrows(IllegalStateException.class, () ->
+                ticketService.updateCheckpoint(ticket.getId(), cp1.getId(), updateReq));
+
+        assertThrows(IllegalStateException.class, () ->
+                ticketService.deleteCheckpoint(ticket.getId(), cp1.getId()));
+
+        assertThrows(IllegalStateException.class, () ->
+                ticketService.toggleCheckpoint(ticket.getId(), cp1.getId(), false));
+    }
 }

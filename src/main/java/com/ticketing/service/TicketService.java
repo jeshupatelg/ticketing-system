@@ -333,6 +333,10 @@ public class TicketService {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
+        if (ticket.getPhase() == TicketPhase.CLOSED) {
+            throw new IllegalStateException("Assignee cannot be changed on Closed or Cancelled tickets.");
+        }
+
         String oldAssignee = ticket.getAssignee();
         String cleanedAssignee = (newAssignee != null && !newAssignee.isBlank()) ? newAssignee.trim().toLowerCase() : null;
         ticket.setAssignee(cleanedAssignee);
@@ -450,14 +454,102 @@ public class TicketService {
 
     /**
      * Checkpoint Management:
-     * For Planned phase: Checkpoints are IMMUTABLE.
-     * In Execution: can toggle completed.
-     * In Closed: IMMUTABLE.
+     * Checkpoint list is editable throughout except Completed and Cancelled.
+     * Checkpoints and assignment are non-editable on Completed or Cancelled.
      */
+    @Transactional
+    public TicketCheckpoint addCheckpoint(String ticketId, CheckpointRequest request) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
+
+        if (ticket.getScope() != TicketScope.LIVE) {
+            throw new IllegalStateException("Checkpoints can only be added to tickets in Live scope.");
+        }
+        if (ticket.getPhase() == TicketPhase.CLOSED) {
+            throw new IllegalStateException("Cannot add checkpoints to Closed or Cancelled tickets.");
+        }
+
+        List<TicketCheckpoint> existing = checkpointRepository.findByTicketIdOrderByOrderIndexAsc(ticketId);
+        TicketCheckpoint cp = new TicketCheckpoint(ticketId, request.getTitle().trim(), false, existing.size());
+        TicketCheckpoint saved = checkpointRepository.save(cp);
+
+        activityService.recordActivity(
+                ticketId,
+                TicketActivityType.CHECKPOINT_ADDED,
+                null,
+                "Added checkpoint: " + saved.getTitle(),
+                saved.getTitle()
+        );
+
+        return saved;
+    }
+
+    @Transactional
+    public TicketCheckpoint updateCheckpoint(String ticketId, Long checkpointId, CheckpointRequest request) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
+
+        if (ticket.getPhase() == TicketPhase.CLOSED) {
+            throw new IllegalStateException("Cannot edit checkpoints on Closed or Cancelled tickets.");
+        }
+
+        TicketCheckpoint checkpoint = checkpointRepository.findById(checkpointId)
+                .orElseThrow(() -> new IllegalArgumentException("Checkpoint not found: " + checkpointId));
+
+        if (!checkpoint.getTicketId().equals(ticketId)) {
+            throw new IllegalArgumentException("Checkpoint does not belong to ticket: " + ticketId);
+        }
+
+        checkpoint.setTitle(request.getTitle().trim());
+        TicketCheckpoint saved = checkpointRepository.save(checkpoint);
+
+        activityService.recordActivity(
+                ticketId,
+                TicketActivityType.CHECKPOINT_UPDATED,
+                null,
+                "Updated checkpoint: " + saved.getTitle(),
+                saved.getTitle()
+        );
+
+        return saved;
+    }
+
+    @Transactional
+    public void deleteCheckpoint(String ticketId, Long checkpointId) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
+
+        if (ticket.getPhase() == TicketPhase.CLOSED) {
+            throw new IllegalStateException("Cannot delete checkpoints on Closed or Cancelled tickets.");
+        }
+
+        TicketCheckpoint checkpoint = checkpointRepository.findById(checkpointId)
+                .orElseThrow(() -> new IllegalArgumentException("Checkpoint not found: " + checkpointId));
+
+        if (!checkpoint.getTicketId().equals(ticketId)) {
+            throw new IllegalArgumentException("Checkpoint does not belong to ticket: " + ticketId);
+        }
+
+        String title = checkpoint.getTitle();
+        checkpointRepository.delete(checkpoint);
+
+        activityService.recordActivity(
+                ticketId,
+                TicketActivityType.CHECKPOINT_DELETED,
+                null,
+                "Removed checkpoint: " + title,
+                title
+        );
+    }
+
     @Transactional
     public TicketCheckpoint toggleCheckpoint(String ticketId, Long checkpointId, boolean completed) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
+
+        if (ticket.getPhase() == TicketPhase.CLOSED) {
+            throw new IllegalStateException("Checkpoints cannot be toggled on Closed or Cancelled tickets.");
+        }
 
         TicketCheckpoint checkpoint = checkpointRepository.findById(checkpointId)
                 .orElseThrow(() -> new IllegalArgumentException("Checkpoint not found: " + checkpointId));
