@@ -25,6 +25,7 @@ public class DataInitializer implements CommandLineRunner {
     private final PredefinedPhotoRepository photoRepository;
     private final com.ticketing.repository.TicketRepository ticketRepository;
     private final com.ticketing.service.TicketActivityService activityService;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @Value("${app.attachments.storage-dir:./data/attachments}")
     private String attachmentStorageDir;
@@ -36,12 +37,14 @@ public class DataInitializer implements CommandLineRunner {
                            UserRepository userRepository,
                            PredefinedPhotoRepository photoRepository,
                            com.ticketing.repository.TicketRepository ticketRepository,
-                           com.ticketing.service.TicketActivityService activityService) {
+                           com.ticketing.service.TicketActivityService activityService,
+                           org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.photoRepository = photoRepository;
         this.ticketRepository = ticketRepository;
         this.activityService = activityService;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     /**
@@ -60,6 +63,15 @@ public class DataInitializer implements CommandLineRunner {
         // Ensure storage directories exist
         new File(attachmentStorageDir).mkdirs();
         new File(avatarStorageDir).mkdirs();
+
+        // Ensure tickets_phase_check permits all TicketPhase values
+        try {
+            jdbcTemplate.execute("ALTER TABLE tickets DROP CONSTRAINT IF EXISTS tickets_phase_check");
+            jdbcTemplate.execute("ALTER TABLE tickets ADD CONSTRAINT tickets_phase_check CHECK (phase IN ('PLAN', 'PLANNED', 'EXECUTION', 'TEST', 'CLOSED'))");
+            log.info("Verified and updated tickets_phase_check constraint");
+        } catch (Exception e) {
+            log.warn("Could not update tickets_phase_check constraint: {}", e.getMessage());
+        }
 
         // 1. Ensure default project 'Adhocs' exists
         if (!projectRepository.existsByCodeIgnoreCase("ADH")) {
