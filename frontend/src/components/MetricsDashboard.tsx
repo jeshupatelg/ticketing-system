@@ -91,7 +91,7 @@ export const MetricsDashboard: React.FC<Props> = ({
           </div>
           <div className="text-2xl font-bold text-theme-text font-mono">{metrics.liveScopeTickets}</div>
           <div className="text-[11px] text-theme-muted mt-1">
-            {metrics.executionPhaseTickets} currently in execution
+            {metrics.executionPhaseTickets} in execution • {metrics.testPhaseTickets || 0} in test
           </div>
         </div>
 
@@ -123,7 +123,7 @@ export const MetricsDashboard: React.FC<Props> = ({
         <div className="flex items-center justify-between text-xs">
           <h3 className="font-semibold text-theme-text uppercase tracking-wider">Phase Distribution</h3>
           <span className="text-theme-muted">
-            {metrics.plannedPhaseTickets} Planned • {metrics.executionPhaseTickets} Execution • {metrics.closedPhaseTickets} Closed
+            {metrics.plannedPhaseTickets} Planned • {metrics.executionPhaseTickets} Execution • {metrics.testPhaseTickets || 0} Test • {metrics.closedPhaseTickets} Closed
           </span>
         </div>
 
@@ -138,6 +138,11 @@ export const MetricsDashboard: React.FC<Props> = ({
               style={{ width: `${(metrics.executionPhaseTickets / metrics.totalTickets) * 100}%` }}
               className="bg-indigo-500 h-full"
               title={`Execution: ${metrics.executionPhaseTickets}`}
+            />
+            <div
+              style={{ width: `${((metrics.testPhaseTickets || 0) / metrics.totalTickets) * 100}%` }}
+              className="bg-cyan-500 h-full"
+              title={`Test: ${metrics.testPhaseTickets || 0}`}
             />
             <div
               style={{ width: `${(metrics.completedTickets / metrics.totalTickets) * 100}%` }}
@@ -158,6 +163,7 @@ export const MetricsDashboard: React.FC<Props> = ({
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500" /> Planned</span>
             <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-indigo-500" /> Execution</span>
+            <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-cyan-500" /> Test</span>
             <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Completed</span>
             <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500" /> Cancelled</span>
           </div>

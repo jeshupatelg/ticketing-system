@@ -1,5 +1,5 @@
 export type ScopeType = 'PLAN' | 'LIVE';
-export type PhaseType = 'PLAN' | 'PLANNED' | 'EXECUTION' | 'CLOSED';
+export type PhaseType = 'PLAN' | 'PLANNED' | 'EXECUTION' | 'TEST' | 'CLOSED';
 export type PriorityType = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
 export interface User {
@@ -130,6 +130,7 @@ export interface Metrics {
   liveScopeTickets: number;
   plannedPhaseTickets: number;
   executionPhaseTickets: number;
+  testPhaseTickets: number;
   closedPhaseTickets: number;
   completedTickets: number;
   cancelledTickets: number;

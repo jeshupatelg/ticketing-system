@@ -4,5 +4,6 @@ public enum TicketPhase {
     PLAN,
     PLANNED,
     EXECUTION,
+    TEST,
     CLOSED
 }

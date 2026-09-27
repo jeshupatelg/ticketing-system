@@ -169,6 +169,9 @@ export const TicketModal: React.FC<Props> = ({
     if (ticket.phase === 'EXECUTION') {
       return 'bg-indigo-600 text-white';
     }
+    if (ticket.phase === 'TEST') {
+      return 'bg-cyan-600 text-white';
+    }
     if (ticket.phase === 'CLOSED') {
       if (!ticket.completed) {
         // CRITICAL REQUIREMENT: Reserve red color for closed but incomplete i.e. cancelled tickets
@@ -301,12 +304,9 @@ export const TicketModal: React.FC<Props> = ({
     }
   };
 
-  // Checkpoint handlers (Live scope)
+  // Checkpoint handlers (Live scope - always editable)
   const handleToggleCheckpoint = async (cp: TicketCheckpoint) => {
     if (!ticket) return;
-    if (ticket.phase !== 'EXECUTION') {
-      return; // Checkpoints are immutable in Planned and Closed
-    }
     try {
       await api.toggleCheckpoint(ticket.id, cp.id, !cp.completed);
       await loadTicket();
@@ -383,6 +383,7 @@ export const TicketModal: React.FC<Props> = ({
   const isClosed = ticket?.phase === 'CLOSED';
   const isPlanned = ticket?.phase === 'PLANNED';
   const isExecution = ticket?.phase === 'EXECUTION';
+  const isTest = ticket?.phase === 'TEST';
   const isPlanScope = ticket?.scope === 'PLAN';
 
   return (
@@ -477,34 +478,46 @@ export const TicketModal: React.FC<Props> = ({
                       <span className="text-theme-muted italic">None (Unassigned)</span>
                     )}
 
-                    {/* Reassign option in Execution phase */}
-                    {isExecution && (
-                      <div className="relative">
-                        <button
-                          onClick={() => setReassignDropdownOpen(!reassignDropdownOpen)}
-                          className="text-[11px] text-theme-primary hover:underline font-semibold ml-1"
-                        >
-                          Reassign
-                        </button>
-                        {reassignDropdownOpen && (
-                          <div className="absolute right-0 top-full mt-1 w-48 bg-theme-surface border border-theme-border rounded-lg shadow-xl p-1 z-30 max-h-48 overflow-y-auto">
-                            <div className="px-2 py-1 text-[10px] uppercase font-bold text-theme-muted">
-                              Select Assignee
-                            </div>
-                            {users.map(u => (
-                              <button
-                                key={u.username}
-                                onClick={() => handleReassign(u.username)}
-                                className="w-full text-left px-2 py-1.5 text-xs text-theme-text hover:bg-theme-surfaceHover rounded flex items-center gap-1.5"
-                              >
-                                <img src={resolveUrl(u.avatarUrl, '/api/photos/default/avatar-1.svg')} alt="" className="w-4 h-4 rounded-full" />
-                                <span className="truncate">{u.name}</span>
-                              </button>
-                            ))}
+                    {/* Assign/Reassign option - editable throughout */}
+                    <div className="relative">
+                      <button
+                        onClick={() => setReassignDropdownOpen(!reassignDropdownOpen)}
+                        className="text-[11px] text-theme-primary hover:underline font-semibold ml-1"
+                      >
+                        {ticket.assignee ? 'Reassign' : 'Assign'}
+                      </button>
+                      {reassignDropdownOpen && (
+                        <div className="absolute right-0 top-full mt-1 w-48 bg-theme-surface border border-theme-border rounded-lg shadow-xl p-1 z-30 max-h-48 overflow-y-auto">
+                          <div className="px-2 py-1 text-[10px] uppercase font-bold text-theme-muted">
+                            Select Assignee
                           </div>
-                        )}
-                      </div>
-                    )}
+                          {ticket.assignee && (
+                            <button
+                              onClick={() => {
+                                handleReassign('');
+                                setReassignDropdownOpen(false);
+                              }}
+                              className="w-full text-left px-2 py-1.5 text-xs text-rose-400 hover:bg-theme-surfaceHover rounded flex items-center gap-1.5"
+                            >
+                              <span className="italic">Unassign</span>
+                            </button>
+                          )}
+                          {users.map(u => (
+                            <button
+                              key={u.username}
+                              onClick={() => {
+                                handleReassign(u.username);
+                                setReassignDropdownOpen(false);
+                              }}
+                              className="w-full text-left px-2 py-1.5 text-xs text-theme-text hover:bg-theme-surfaceHover rounded flex items-center gap-1.5"
+                            >
+                              <img src={resolveUrl(u.avatarUrl, '/api/photos/default/avatar-1.svg')} alt="" className="w-4 h-4 rounded-full" />
+                              <span className="truncate">{u.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -544,20 +557,38 @@ export const TicketModal: React.FC<Props> = ({
                     )}
 
                     {isExecution && (
-                      <button
-                        onClick={() => handleTransitionPhase('PLANNED')}
-                        className="px-3 py-1.5 text-xs font-medium text-theme-text bg-theme-surfaceHover hover:bg-theme-border rounded-lg border border-theme-border transition-colors"
-                      >
-                        Move back to Planned
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleTransitionPhase('TEST')}
+                          className="flex-1 px-3 py-1.5 text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-lg shadow-md flex items-center justify-center gap-1.5 transition-colors"
+                        >
+                          Move to Test <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleTransitionPhase('PLANNED')}
+                          className="px-3 py-1.5 text-xs font-medium text-theme-text bg-theme-surfaceHover hover:bg-theme-border rounded-lg border border-theme-border transition-colors"
+                        >
+                          Back to Planned
+                        </button>
+                      </>
                     )}
 
-                    <button
-                      onClick={() => handleTransitionPhase('CLOSED', true)}
-                      className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg shadow-md transition-colors"
-                    >
-                      Close (Completed)
-                    </button>
+                    {isTest && (
+                      <>
+                        <button
+                          onClick={() => handleTransitionPhase('CLOSED', true)}
+                          className="flex-1 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg shadow-md transition-colors"
+                        >
+                          Close (Completed)
+                        </button>
+                        <button
+                          onClick={() => handleTransitionPhase('EXECUTION')}
+                          className="px-3 py-1.5 text-xs font-medium text-theme-text bg-theme-surfaceHover hover:bg-theme-border rounded-lg border border-theme-border transition-colors"
+                        >
+                          Return to Execution
+                        </button>
+                      </>
+                    )}
 
                     <button
                       onClick={() => handleTransitionPhase('CLOSED', false)}
@@ -706,21 +737,14 @@ export const TicketModal: React.FC<Props> = ({
                       Checkpoints ({ticket.completedCheckpoints}/{ticket.totalCheckpoints} Completed)
                     </h3>
                   </div>
-                  {isPlanned && (
-                    <span className="text-xs text-theme-muted italic">
-                      Checkpoints immutable in Planned phase
-                    </span>
-                  )}
                 </div>
 
                 <div className="space-y-2">
                   {ticket.checkpoints.map(cp => (
                     <div
                       key={cp.id}
-                      onClick={() => isExecution && handleToggleCheckpoint(cp)}
-                      className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
-                        isExecution ? 'cursor-pointer hover:bg-theme-surfaceHover' : 'cursor-default'
-                      } ${
+                      onClick={() => handleToggleCheckpoint(cp)}
+                      className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer hover:bg-theme-surfaceHover ${
                         cp.completed
                           ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-200'
                           : 'bg-theme-bg border-theme-border text-theme-text'
@@ -728,8 +752,7 @@ export const TicketModal: React.FC<Props> = ({
                     >
                       <button
                         type="button"
-                        disabled={!isExecution}
-                        className="text-theme-muted flex-shrink-0 disabled:cursor-not-allowed"
+                        className="text-theme-muted flex-shrink-0"
                       >
                         {cp.completed ? (
                           <CheckSquare className="w-4 h-4 text-emerald-400" />

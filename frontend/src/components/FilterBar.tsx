@@ -93,6 +93,7 @@ export const FilterBar: React.FC<Props> = ({
                 <option value="">All Phases</option>
                 <option value="PLANNED">Planned Phase</option>
                 <option value="EXECUTION">Execution Phase</option>
+                <option value="TEST">Test Phase</option>
                 <option value="CLOSED">Closed Phase</option>
               </select>
             </div>

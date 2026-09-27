@@ -144,35 +144,55 @@ public class TicketWorkflowTests {
         TicketDetailResponse ticket = ticketService.createTicket(req, "admin");
         ticketService.promoteTicket(ticket.getId());
 
-        // In Planned phase: Checkpoints are immutable
+        // Checkpoints are always editable (even in Planned phase)
         Long cpId = ticketService.getTicketDetail(ticket.getId()).getCheckpoints().get(0).getId();
-        assertThrows(IllegalStateException.class, () -> ticketService.toggleCheckpoint(ticket.getId(), cpId, true));
+        TicketCheckpoint toggledPlanned = ticketService.toggleCheckpoint(ticket.getId(), cpId, true);
+        assertTrue(toggledPlanned.isCompleted());
 
-        // Moving to Execution WITHOUT assignee must fail
-        TransitionPhaseRequest toExecNoAssignee = new TransitionPhaseRequest();
-        toExecNoAssignee.setPhase(TicketPhase.EXECUTION);
-        assertThrows(IllegalArgumentException.class, () -> ticketService.transitionPhase(ticket.getId(), toExecNoAssignee));
+        // Assignee is editable throughout (even in Planned phase)
+        TicketDetailResponse assignedInPlan = ticketService.reassignTicket(ticket.getId(), "developer0");
+        assertEquals("developer0", assignedInPlan.getAssignee());
 
         // Moving to Execution WITH assignee succeeds
-        TransitionPhaseRequest toExecWithAssignee = new TransitionPhaseRequest();
-        toExecWithAssignee.setPhase(TicketPhase.EXECUTION);
-        toExecWithAssignee.setAssignee("developer1");
-        TicketDetailResponse execTicket = ticketService.transitionPhase(ticket.getId(), toExecWithAssignee);
+        TransitionPhaseRequest toExec = new TransitionPhaseRequest();
+        toExec.setPhase(TicketPhase.EXECUTION);
+        toExec.setAssignee("developer1");
+        TicketDetailResponse execTicket = ticketService.transitionPhase(ticket.getId(), toExec);
 
         assertEquals(TicketPhase.EXECUTION, execTicket.getPhase());
         assertEquals("developer1", execTicket.getAssignee());
 
         // In Execution: Checkpoints can be toggled
-        TicketCheckpoint toggled = ticketService.toggleCheckpoint(ticket.getId(), cpId, true);
-        assertTrue(toggled.isCompleted());
+        TicketCheckpoint toggledExec = ticketService.toggleCheckpoint(ticket.getId(), cpId, false);
+        assertFalse(toggledExec.isCompleted());
 
         // In Execution: Reassignment to another user is allowed
         TicketDetailResponse reassigned = ticketService.reassignTicket(ticket.getId(), "developer2");
         assertEquals("developer2", reassigned.getAssignee());
 
-        // In Execution: De-assignment (empty/null assignee) must FAIL
-        assertThrows(IllegalArgumentException.class, () -> ticketService.reassignTicket(ticket.getId(), ""));
-        assertThrows(IllegalArgumentException.class, () -> ticketService.reassignTicket(ticket.getId(), null));
+        // Assignee can also be cleared/unassigned
+        TicketDetailResponse unassigned = ticketService.reassignTicket(ticket.getId(), "");
+        assertNull(unassigned.getAssignee());
+
+        // Reassign for workflow completion
+        ticketService.reassignTicket(ticket.getId(), "developer1");
+
+        // Enforce EXECUTION -> TEST: Direct completion from Execution MUST fail
+        TransitionPhaseRequest directClose = new TransitionPhaseRequest();
+        directClose.setPhase(TicketPhase.CLOSED);
+        directClose.setCompleted(true);
+        assertThrows(IllegalStateException.class, () -> ticketService.transitionPhase(ticket.getId(), directClose));
+
+        // Moving to TEST succeeds
+        TransitionPhaseRequest toTest = new TransitionPhaseRequest();
+        toTest.setPhase(TicketPhase.TEST);
+        TicketDetailResponse testTicket = ticketService.transitionPhase(ticket.getId(), toTest);
+        assertEquals(TicketPhase.TEST, testTicket.getPhase());
+
+        // From TEST, completing succeeds
+        TicketDetailResponse closedTicket = ticketService.transitionPhase(ticket.getId(), directClose);
+        assertEquals(TicketPhase.CLOSED, closedTicket.getPhase());
+        assertTrue(closedTicket.isCompleted());
     }
 
     @Test
@@ -296,13 +316,18 @@ public class TicketWorkflowTests {
         assertFalse(liveDetail.getCheckpoints().isEmpty());
         ticketService.toggleCheckpoint(ticket.getId(), liveDetail.getCheckpoints().get(0).getId(), true);
 
-        // 7. Transition to CLOSED activity
+        // 7. Transition to TEST activity
+        TransitionPhaseRequest toTest = new TransitionPhaseRequest();
+        toTest.setPhase(TicketPhase.TEST);
+        ticketService.transitionPhase(ticket.getId(), toTest);
+
+        // 8. Transition to CLOSED activity
         TransitionPhaseRequest toClose = new TransitionPhaseRequest();
         toClose.setPhase(TicketPhase.CLOSED);
         toClose.setCompleted(true);
         ticketService.transitionPhase(ticket.getId(), toClose);
 
-        // 8. Add comment on CLOSED ticket - MUST STILL TRACK ACTIVITY!
+        // 9. Add comment on CLOSED ticket - MUST STILL TRACK ACTIVITY!
         ticketService.addComment(ticket.getId(), "alex", "Alex", "Post-closure comment check");
 
         // Verify full timeline in ticket detail

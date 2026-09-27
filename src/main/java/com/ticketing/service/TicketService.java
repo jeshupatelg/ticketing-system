@@ -272,7 +272,6 @@ public class TicketService {
         String activityDesc = "Transitioned phase to " + targetPhase;
 
         if (targetPhase == TicketPhase.EXECUTION) {
-            // First move from Planned to Execution when none assigned, prompts assignment necessarily
             String assignee = request.getAssignee();
             if (assignee != null && !assignee.isBlank()) {
                 ticket.setAssignee(assignee.trim().toLowerCase());
@@ -281,19 +280,31 @@ public class TicketService {
             if (ticket.getAssignee() == null || ticket.getAssignee().isBlank()) {
                 throw new IllegalArgumentException("An assignee must be specified when transitioning to Execution.");
             }
+            boolean wasTest = ticket.getPhase() == TicketPhase.TEST;
             ticket.setPhase(TicketPhase.EXECUTION);
-            activityDesc = "Started Execution phase (assigned to @" + ticket.getAssignee() + ")";
+            activityDesc = wasTest
+                    ? "Returned to Execution phase from Test"
+                    : "Started Execution phase (assigned to @" + ticket.getAssignee() + ")";
+        } else if (targetPhase == TicketPhase.TEST) {
+            if (ticket.getPhase() != TicketPhase.EXECUTION) {
+                throw new IllegalStateException("Ticket must be in Execution phase before moving to Test.");
+            }
+            ticket.setPhase(TicketPhase.TEST);
+            activityDesc = "Moved to Test phase";
         } else if (targetPhase == TicketPhase.PLANNED) {
             ticket.setPhase(TicketPhase.PLANNED);
             activityDesc = "Moved back to Planned phase";
         } else if (targetPhase == TicketPhase.CLOSED) {
-            ticket.setPhase(TicketPhase.CLOSED);
             boolean completed = request.getCompleted() != null ? request.getCompleted() : true;
+            if (completed && ticket.getPhase() != TicketPhase.TEST) {
+                throw new IllegalStateException("Ticket must pass the Test phase before being marked as Completed.");
+            }
+            ticket.setPhase(TicketPhase.CLOSED);
             ticket.setCompleted(completed);
             ticket.setCompletedAt(Instant.now());
             if (completed) {
                 activityType = TicketActivityType.TICKET_COMPLETED;
-                activityDesc = "Completed ticket successfully";
+                activityDesc = "Completed ticket successfully (passed Test)";
             } else {
                 activityType = TicketActivityType.TICKET_CANCELLED;
                 activityDesc = "Cancelled ticket";
@@ -322,32 +333,21 @@ public class TicketService {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
-        if (ticket.getPhase() == TicketPhase.PLANNED) {
-            throw new IllegalStateException("Assignee is immutable during Planned phase.");
-        }
-
-        if (ticket.getPhase() == TicketPhase.CLOSED) {
-            throw new IllegalStateException("Closed tickets are immutable.");
-        }
-
-        if (ticket.getPhase() != TicketPhase.EXECUTION) {
-            throw new IllegalStateException("Assignee can only be changed during Execution phase.");
-        }
-
-        if (newAssignee == null || newAssignee.isBlank()) {
-            throw new IllegalArgumentException("Ticket cannot be de-assigned in Execution phase.");
-        }
-
         String oldAssignee = ticket.getAssignee();
-        ticket.setAssignee(newAssignee.trim().toLowerCase());
+        String cleanedAssignee = (newAssignee != null && !newAssignee.isBlank()) ? newAssignee.trim().toLowerCase() : null;
+        ticket.setAssignee(cleanedAssignee);
         Ticket saved = ticketRepository.save(ticket);
+
+        String desc = cleanedAssignee != null
+                ? "Reassigned ticket to @" + cleanedAssignee + (oldAssignee != null ? " (was @" + oldAssignee + ")" : "")
+                : "Unassigned ticket (was @" + oldAssignee + ")";
 
         activityService.recordActivity(
                 ticketId,
                 TicketActivityType.TICKET_REASSIGNED,
                 null,
-                "Reassigned ticket to @" + newAssignee.trim().toLowerCase() + (oldAssignee != null ? " (was @" + oldAssignee + ")" : ""),
-                newAssignee.trim().toLowerCase()
+                desc,
+                cleanedAssignee
         );
 
         return toDetailResponse(saved);
@@ -458,16 +458,6 @@ public class TicketService {
     public TicketCheckpoint toggleCheckpoint(String ticketId, Long checkpointId, boolean completed) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
-
-        if (ticket.getPhase() == TicketPhase.PLANNED) {
-            throw new IllegalStateException("Checkpoints are immutable during Planned phase.");
-        }
-        if (ticket.getPhase() == TicketPhase.CLOSED) {
-            throw new IllegalStateException("Checkpoints cannot be modified on Closed tickets.");
-        }
-        if (ticket.getPhase() != TicketPhase.EXECUTION) {
-            throw new IllegalStateException("Checkpoints can only be toggled in Execution phase.");
-        }
 
         TicketCheckpoint checkpoint = checkpointRepository.findById(checkpointId)
                 .orElseThrow(() -> new IllegalArgumentException("Checkpoint not found: " + checkpointId));
@@ -588,6 +578,7 @@ public class TicketService {
         metrics.setLiveScopeTickets(ticketRepository.countByScope(TicketScope.LIVE));
         metrics.setPlannedPhaseTickets(ticketRepository.countByPhase(TicketPhase.PLANNED));
         metrics.setExecutionPhaseTickets(ticketRepository.countByPhase(TicketPhase.EXECUTION));
+        metrics.setTestPhaseTickets(ticketRepository.countByPhase(TicketPhase.TEST));
         metrics.setClosedPhaseTickets(ticketRepository.countByPhase(TicketPhase.CLOSED));
         metrics.setCompletedTickets(ticketRepository.countByCompleted(true));
         metrics.setCancelledTickets(ticketRepository.countByPhase(TicketPhase.CLOSED) - ticketRepository.countByCompleted(true));

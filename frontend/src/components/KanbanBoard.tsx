@@ -112,6 +112,14 @@ export const KanbanBoard: React.FC<Props> = ({
     return { items: list, total: list.length };
   }, [filteredTickets, isFilterActive]);
 
+  const testLane = useMemo(() => {
+    const list = filteredTickets.filter(t => t.phase === 'TEST');
+    if (isFilterActive) {
+      return { items: list.slice(0, MAX_PER_LANE_FILTERED), total: list.length };
+    }
+    return { items: list, total: list.length };
+  }, [filteredTickets, isFilterActive]);
+
   const closedLane = useMemo(() => {
     const list = filteredTickets.filter(t => t.phase === 'CLOSED');
     if (isFilterActive) {
@@ -141,7 +149,7 @@ export const KanbanBoard: React.FC<Props> = ({
             </div>
             <p className="text-xs text-theme-muted">
               {scope === 'LIVE'
-                ? 'Live Scope • 3 Phase Lanes (Planned, Execution, Closed)'
+                ? 'Live Scope • 4 Phase Lanes (Planned, Execution, Test, Closed)'
                 : 'Plan Scope • Exploration & Ideas Backlog (No Lanes)'}
             </p>
           </div>
@@ -158,8 +166,8 @@ export const KanbanBoard: React.FC<Props> = ({
 
       {/* Main Board Area */}
       {scope === 'LIVE' ? (
-        /* LIVE SCOPE: Exactly 3 lanes */
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 overflow-hidden pt-1">
+        /* LIVE SCOPE: Exactly 4 lanes (Planned, Execution, Test, Closed) */
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-hidden pt-1">
           {/* Lane 1: PLANNED */}
           <div className="flex flex-col bg-theme-surface/60 rounded-xl border border-theme-border overflow-hidden">
             {/* Lane Header */}
@@ -230,7 +238,42 @@ export const KanbanBoard: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Lane 3: CLOSED (Completed & Cancelled) */}
+          {/* Lane 3: TEST */}
+          <div className="flex flex-col bg-theme-surface/60 rounded-xl border border-theme-border overflow-hidden">
+            {/* Lane Header */}
+            <div className="px-4 py-3 border-b border-theme-border flex items-center justify-between bg-cyan-950/30">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-cyan-500 ring-2 ring-cyan-500/20" />
+                <h3 className="font-semibold text-xs text-theme-text uppercase tracking-wider">Test</h3>
+              </div>
+              <div className="flex items-center gap-1.5 font-mono text-xs">
+                <span className="px-2 py-0.5 rounded-full bg-theme-bg text-theme-text font-bold">
+                  {testLane.total}
+                </span>
+                {isFilterActive && testLane.total > MAX_PER_LANE_FILTERED && (
+                  <span className="text-[10px] text-theme-muted">(Cap: 6)</span>
+                )}
+              </div>
+            </div>
+
+            {/* Lane Cards Container */}
+            <div className="flex-1 p-3 overflow-y-auto space-y-3">
+              {testLane.items.map(ticket => (
+                <TicketCard
+                  key={ticket.id}
+                  ticket={ticket}
+                  onClick={() => onOpenTicket(ticket.id)}
+                />
+              ))}
+              {testLane.items.length === 0 && (
+                <div className="h-32 flex flex-col items-center justify-center text-xs text-theme-muted border border-dashed border-theme-border/70 rounded-xl">
+                  <span>No tickets in Test</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Lane 4: CLOSED (Completed & Cancelled) */}
           <div className="flex flex-col bg-theme-surface/60 rounded-xl border border-theme-border overflow-hidden">
             {/* Lane Header */}
             <div className="px-4 py-3 border-b border-theme-border flex items-center justify-between bg-emerald-950/20">

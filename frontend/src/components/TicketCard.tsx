@@ -42,6 +42,9 @@ export const TicketCard: React.FC<Props> = ({
     if (ticket.phase === 'EXECUTION') {
       return 'bg-indigo-950/40 border-indigo-800/60 hover:border-indigo-400/70 shadow-indigo-950/30';
     }
+    if (ticket.phase === 'TEST') {
+      return 'bg-cyan-950/40 border-cyan-800/60 hover:border-cyan-400/70 shadow-cyan-950/30';
+    }
     if (ticket.phase === 'CLOSED') {
       if (!ticket.completed) {
         // CRITICAL: Reserve red color for closed but incomplete i.e. cancelled tickets

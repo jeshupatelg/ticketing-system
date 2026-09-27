@@ -9,6 +9,7 @@ public class MetricsResponse {
     private long liveScopeTickets;
     private long plannedPhaseTickets;
     private long executionPhaseTickets;
+    private long testPhaseTickets;
     private long closedPhaseTickets;
     private long completedTickets;
     private long cancelledTickets;
@@ -31,6 +32,9 @@ public class MetricsResponse {
 
     public long getExecutionPhaseTickets() { return executionPhaseTickets; }
     public void setExecutionPhaseTickets(long executionPhaseTickets) { this.executionPhaseTickets = executionPhaseTickets; }
+
+    public long getTestPhaseTickets() { return testPhaseTickets; }
+    public void setTestPhaseTickets(long testPhaseTickets) { this.testPhaseTickets = testPhaseTickets; }
 
     public long getClosedPhaseTickets() { return closedPhaseTickets; }
     public void setClosedPhaseTickets(long closedPhaseTickets) { this.closedPhaseTickets = closedPhaseTickets; }
