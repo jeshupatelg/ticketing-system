@@ -27,7 +27,9 @@ public class PhotoController {
     @GetMapping("/config")
     public ResponseEntity<Map<String, Object>> getConfig() {
         return ResponseEntity.ok(Map.of(
-                "maxSizeMb", photoService.getMaxSizeMb()
+                "maxSizeMb", photoService.getMaxSizeMb(),
+                "thumbnailSize", photoService.getThumbnailSize(),
+                "supportedFormats", photoService.getSupportedFormats()
         ));
     }
 

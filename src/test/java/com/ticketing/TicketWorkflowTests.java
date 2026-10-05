@@ -17,6 +17,13 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -352,20 +359,118 @@ public class TicketWorkflowTests {
         assertTrue(types.contains(TicketActivityType.COMMENT_ADDED));
     }
 
+    private byte[] createTestImageBytes(int width, int height, String format) throws Exception {
+        BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = img.createGraphics();
+        g.setColor(Color.BLUE);
+        g.fillRect(0, 0, width, height);
+        g.dispose();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(img, format, baos);
+        return baos.toByteArray();
+    }
+
     @Test
-    @DisplayName("Photo upload within size limit succeeds")
+    @DisplayName("Photo upload within size limit succeeds and is downscaled to 256x256 thumbnail")
     void testPhotoUploadWithinLimit() throws Exception {
         assertEquals(2L, photoService.getMaxSizeMb());
+        byte[] imgBytes = createTestImageBytes(500, 300, "png");
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "test-avatar.png",
                 "image/png",
-                new byte[1024 * 100] // 100 KB
+                imgBytes
         );
         PredefinedPhoto photo = photoService.uploadCustomPhoto(file, "Test Avatar", "USER");
         assertNotNull(photo);
         assertTrue(photo.isCustom());
         assertTrue(photo.getUrl().startsWith("/api/photos/custom/"));
+        assertTrue(photo.getUrl().endsWith(".png"));
+
+        // Verify downscaled dimensions
+        String filename = photo.getUrl().replace("/api/photos/custom/", "");
+        var resource = photoService.loadCustomPhotoAsResource(filename);
+        BufferedImage savedImg = ImageIO.read(resource.getInputStream());
+        assertNotNull(savedImg);
+        assertEquals(256, savedImg.getWidth());
+        assertEquals(256, savedImg.getHeight());
+    }
+
+    @Test
+    @DisplayName("JPEG photo upload is square-cropped and downscaled to 256x256")
+    void testJpgPhotoDownscaledAndSquareCropped() throws Exception {
+        byte[] imgBytes = createTestImageBytes(800, 400, "jpg");
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "project-badge.jpg",
+                "image/jpeg",
+                imgBytes
+        );
+        PredefinedPhoto photo = photoService.uploadCustomPhoto(file, "Project Badge", "PROJECT");
+        assertNotNull(photo);
+        assertTrue(photo.getUrl().endsWith(".jpg"));
+
+        String filename = photo.getUrl().replace("/api/photos/custom/", "");
+        var resource = photoService.loadCustomPhotoAsResource(filename);
+        BufferedImage savedImg = ImageIO.read(resource.getInputStream());
+        assertNotNull(savedImg);
+        assertEquals(256, savedImg.getWidth());
+        assertEquals(256, savedImg.getHeight());
+    }
+
+    @Test
+    @DisplayName("SVG photo upload is passed through untouched without rasterization")
+    void testSvgPhotoUploadUntouched() throws Exception {
+        String svgContent = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"40\" fill=\"#10b981\"/></svg>";
+        byte[] svgBytes = svgContent.getBytes(StandardCharsets.UTF_8);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "vector-badge.svg",
+                "image/svg+xml",
+                svgBytes
+        );
+        PredefinedPhoto photo = photoService.uploadCustomPhoto(file, "Vector Badge", "PROJECT");
+        assertNotNull(photo);
+        assertTrue(photo.getUrl().endsWith(".svg"));
+
+        String filename = photo.getUrl().replace("/api/photos/custom/", "");
+        var resource = photoService.loadCustomPhotoAsResource(filename);
+        String savedContent = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        assertEquals(svgContent, savedContent);
+    }
+
+    @Test
+    @DisplayName("Photo upload with unsupported format is rejected")
+    void testPhotoUploadUnsupportedFormatRejected() {
+        MockMultipartFile gifFile = new MockMultipartFile(
+                "file",
+                "animation.gif",
+                "image/gif",
+                new byte[]{1, 2, 3, 4}
+        );
+        IllegalArgumentException exGif = assertThrows(IllegalArgumentException.class, () ->
+                photoService.uploadCustomPhoto(gifFile, "GIF Avatar", "USER"));
+        assertTrue(exGif.getMessage().contains("Unsupported image format"));
+
+        MockMultipartFile pdfFile = new MockMultipartFile(
+                "file",
+                "document.pdf",
+                "application/pdf",
+                new byte[]{1, 2, 3, 4}
+        );
+        IllegalArgumentException exPdf = assertThrows(IllegalArgumentException.class, () ->
+                photoService.uploadCustomPhoto(pdfFile, "PDF", "USER"));
+        assertTrue(exPdf.getMessage().contains("Unsupported image format"));
+
+        MockMultipartFile bmpFile = new MockMultipartFile(
+                "file",
+                "bitmap.bmp",
+                "image/bmp",
+                new byte[]{1, 2, 3, 4}
+        );
+        IllegalArgumentException exBmp = assertThrows(IllegalArgumentException.class, () ->
+                photoService.uploadCustomPhoto(bmpFile, "BMP", "USER"));
+        assertTrue(exBmp.getMessage().contains("Unsupported image format"));
     }
 
     @Test
@@ -387,11 +492,16 @@ public class TicketWorkflowTests {
     }
 
     @Test
-    @DisplayName("Photo config endpoint returns configured max size in MB")
+    @DisplayName("Photo config endpoint returns configured max size in MB, thumbnail size, and supported formats")
     void testPhotoConfigEndpoint() {
         var response = photoController.getConfig();
         assertNotNull(response.getBody());
         assertEquals(2L, response.getBody().get("maxSizeMb"));
+        assertEquals(256, response.getBody().get("thumbnailSize"));
+        @SuppressWarnings("unchecked")
+        Set<String> formats = (Set<String>) response.getBody().get("supportedFormats");
+        assertNotNull(formats);
+        assertTrue(formats.containsAll(List.of("png", "jpg", "jpeg", "webp", "svg")));
     }
 
     @Test

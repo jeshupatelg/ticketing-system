@@ -68,6 +68,12 @@ export const CreateProjectModal: React.FC<Props> = ({ isOpen, onClose, onProject
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
+    const allowed = ['png', 'jpg', 'jpeg', 'webp', 'svg'];
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext || !allowed.includes(ext)) {
+      setError('Unsupported image format. Allowed formats: PNG, JPG, JPEG, WEBP, SVG.');
+      return;
+    }
     const maxSizeBytes = maxSizeMb * 1024 * 1024;
     if (file.size > maxSizeBytes) {
       setError(`Photo size exceeds maximum allowed size of ${maxSizeMb} MB.`);
@@ -152,7 +158,7 @@ export const CreateProjectModal: React.FC<Props> = ({ isOpen, onClose, onProject
               <label className="text-xs text-theme-primary hover:underline cursor-pointer flex items-center gap-1">
                 <Upload className="w-3.5 h-3.5" />
                 Upload New
-                <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+                <input type="file" accept=".png,.jpg,.jpeg,.webp,.svg,image/png,image/jpeg,image/webp,image/svg+xml" onChange={handleFileUpload} className="hidden" />
               </label>
             </div>
             <div className="grid grid-cols-4 gap-2 max-h-32 overflow-y-auto p-1 bg-theme-bg rounded-lg border border-theme-border">
