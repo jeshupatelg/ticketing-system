@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, X, User as UserIcon, Tag, Calendar, Activity, CheckSquare } from 'lucide-react';
+import { Search, Filter, X, User as UserIcon, Tag, Calendar, Activity, CheckSquare, XCircle } from 'lucide-react';
 import { FilterState, PhaseType, User } from '../types';
 
 interface Props {
@@ -26,7 +26,8 @@ export const FilterBar: React.FC<Props> = ({
     filters.assignee ||
     filters.phase ||
     filters.tag ||
-    filters.dateRange
+    filters.dateRange ||
+    filters.includeCancelled
   );
 
   const clearAllFilters = () => {
@@ -36,6 +37,7 @@ export const FilterBar: React.FC<Props> = ({
       phase: null,
       tag: null,
       dateRange: null,
+      includeCancelled: false,
     });
   };
 
@@ -128,6 +130,19 @@ export const FilterBar: React.FC<Props> = ({
             </select>
           </div>
 
+          {/* Cancelled Checkbox (Off by default) */}
+          <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-theme-surface border border-theme-border rounded-lg text-xs cursor-pointer hover:bg-theme-surfaceHover select-none transition-colors">
+            <input
+              type="checkbox"
+              checked={Boolean(filters.includeCancelled)}
+              onChange={e => onFilterChange({ ...filters, includeCancelled: e.target.checked })}
+              className="w-3.5 h-3.5 rounded border-theme-border text-red-500 focus:ring-red-500/20 bg-theme-bg cursor-pointer"
+            />
+            <span className={filters.includeCancelled ? 'text-red-400 font-semibold' : 'text-theme-muted'}>
+              Cancelled
+            </span>
+          </label>
+
           {hasActiveFilters && (
             <button
               onClick={clearAllFilters}
@@ -191,6 +206,16 @@ export const FilterBar: React.FC<Props> = ({
               <Calendar className="w-3 h-3" />
               <span>Date: {filters.dateRange}</span>
               <button onClick={() => onFilterChange({ ...filters, dateRange: null })} className="hover:text-white">
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+
+          {filters.includeCancelled && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-950/60 border border-red-600/50 text-red-300">
+              <XCircle className="w-3 h-3" />
+              <span>Cancelled: Included</span>
+              <button onClick={() => onFilterChange({ ...filters, includeCancelled: false })} className="hover:text-white">
                 <X className="w-3 h-3" />
               </button>
             </span>

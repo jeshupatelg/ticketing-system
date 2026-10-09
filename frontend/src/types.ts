@@ -155,4 +155,5 @@ export interface FilterState {
   phase: PhaseType | null;
   tag: string | null;
   dateRange: 'all' | '1week' | '1month' | null;
+  includeCancelled?: boolean;
 }

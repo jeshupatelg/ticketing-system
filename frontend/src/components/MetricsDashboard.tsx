@@ -108,12 +108,12 @@ export const MetricsDashboard: React.FC<Props> = ({
         {/* Closed & Completion */}
         <div className="p-4 bg-theme-surface border border-theme-border rounded-xl">
           <div className="flex items-center justify-between text-xs text-theme-muted mb-2">
-            <span className="uppercase font-semibold tracking-wider text-emerald-400">Closed Tickets</span>
+            <span className="uppercase font-semibold tracking-wider text-emerald-400">Completed Tickets</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-2xl font-bold text-theme-text font-mono">{metrics.closedPhaseTickets}</div>
+          <div className="text-2xl font-bold text-theme-text font-mono">{metrics.completedTickets}</div>
           <div className="text-[11px] text-theme-muted mt-1">
-            {metrics.completedTickets} completed • {metrics.cancelledTickets} cancelled
+            Successfully passed Test
           </div>
         </div>
       </div>
@@ -123,7 +123,7 @@ export const MetricsDashboard: React.FC<Props> = ({
         <div className="flex items-center justify-between text-xs">
           <h3 className="font-semibold text-theme-text uppercase tracking-wider">Phase Distribution</h3>
           <span className="text-theme-muted">
-            {metrics.plannedPhaseTickets} Planned • {metrics.executionPhaseTickets} Execution • {metrics.testPhaseTickets || 0} Test • {metrics.closedPhaseTickets} Closed
+            {metrics.plannedPhaseTickets} Planned • {metrics.executionPhaseTickets} Execution • {metrics.testPhaseTickets || 0} Test • {metrics.completedTickets} Completed
           </span>
         </div>
 
@@ -149,11 +149,6 @@ export const MetricsDashboard: React.FC<Props> = ({
               className="bg-emerald-500 h-full"
               title={`Completed: ${metrics.completedTickets}`}
             />
-            <div
-              style={{ width: `${(metrics.cancelledTickets / metrics.totalTickets) * 100}%` }}
-              className="bg-red-500 h-full"
-              title={`Cancelled: ${metrics.cancelledTickets}`}
-            />
           </div>
         ) : (
           <div className="h-3 w-full bg-theme-bg rounded-full" />
@@ -165,7 +160,6 @@ export const MetricsDashboard: React.FC<Props> = ({
             <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-indigo-500" /> Execution</span>
             <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-cyan-500" /> Test</span>
             <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Completed</span>
-            <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500" /> Cancelled</span>
           </div>
           <span>Resolution rate: {completionRate}%</span>
         </div>

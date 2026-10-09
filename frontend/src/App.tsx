@@ -38,6 +38,7 @@ export const App: React.FC = () => {
     phase: null,
     tag: null,
     dateRange: null,
+    includeCancelled: false,
   });
 
   // Modal states
@@ -102,7 +103,8 @@ export const App: React.FC = () => {
       const data = await api.getProjectTickets(
         targetProject,
         targetScope,
-        filters.dateRange === 'all'
+        filters.dateRange === 'all',
+        Boolean(filters.includeCancelled)
       );
       // Only commit data if the user is still on the same project and scope
       if (activeProject.code === targetProject && activeScope === targetScope) {
@@ -115,7 +117,7 @@ export const App: React.FC = () => {
         setTickets([]);
       }
     }
-  }, [activeProject, activeScope, filters.dateRange]);
+  }, [activeProject, activeScope, filters.dateRange, filters.includeCancelled]);
 
   useEffect(() => {
     if (activeView === 'project' && activeProject) {

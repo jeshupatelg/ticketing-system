@@ -39,7 +39,8 @@ export const KanbanBoard: React.FC<Props> = ({
     filters.assignee ||
     filters.phase ||
     filters.tag ||
-    filters.dateRange
+    filters.dateRange ||
+    filters.includeCancelled
   );
 
   // Filter tickets according to Scope and FilterState
@@ -47,6 +48,11 @@ export const KanbanBoard: React.FC<Props> = ({
     return tickets
       .filter(t => t.scope === scope)
       .filter(t => {
+        // Cancelled tickets are only visible when includeCancelled is ticked
+        if (!filters.includeCancelled && t.phase === 'CLOSED' && !t.completed) {
+          return false;
+        }
+
         // Search
         if (filters.search) {
           const q = filters.search.toLowerCase();

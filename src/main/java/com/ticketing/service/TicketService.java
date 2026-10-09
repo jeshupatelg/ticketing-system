@@ -48,17 +48,33 @@ public class TicketService {
     }
 
     public List<TicketSummaryResponse> getTicketsByProjectAndScope(String projectCode, TicketScope scope, boolean includeAllCompleted) {
+        return getTicketsByProjectAndScope(projectCode, scope, includeAllCompleted, false);
+    }
+
+    public List<TicketSummaryResponse> getTicketsByProjectAndScope(String projectCode, TicketScope scope, boolean includeAllCompleted, boolean includeCancelled) {
         String pCode = projectCode.toUpperCase();
         List<Ticket> tickets;
 
         if (scope == TicketScope.PLAN) {
-            tickets = ticketRepository.findByProjectCodeAndScope(pCode, TicketScope.PLAN);
+            if (includeCancelled) {
+                tickets = ticketRepository.findByProjectCodeAndScope(pCode, TicketScope.PLAN);
+            } else {
+                tickets = ticketRepository.findPlanTicketsActive(pCode);
+            }
         } else {
             if (includeAllCompleted) {
-                tickets = ticketRepository.findByProjectCodeAndScope(pCode, TicketScope.LIVE);
+                if (includeCancelled) {
+                    tickets = ticketRepository.findByProjectCodeAndScope(pCode, TicketScope.LIVE);
+                } else {
+                    tickets = ticketRepository.findLiveTicketsAllWithoutCancelled(pCode);
+                }
             } else {
                 Instant oneWeekAgo = Instant.now().minus(7, ChronoUnit.DAYS);
-                tickets = ticketRepository.findLiveTicketsDefault(pCode, oneWeekAgo);
+                if (includeCancelled) {
+                    tickets = ticketRepository.findLiveTicketsDefault(pCode, oneWeekAgo);
+                } else {
+                    tickets = ticketRepository.findLiveTicketsDefaultWithoutCancelled(pCode, oneWeekAgo);
+                }
             }
         }
 
@@ -671,9 +687,9 @@ public class TicketService {
         metrics.setPlannedPhaseTickets(ticketRepository.countByPhase(TicketPhase.PLANNED));
         metrics.setExecutionPhaseTickets(ticketRepository.countByPhase(TicketPhase.EXECUTION));
         metrics.setTestPhaseTickets(ticketRepository.countByPhase(TicketPhase.TEST));
-        metrics.setClosedPhaseTickets(ticketRepository.countByPhase(TicketPhase.CLOSED));
+        metrics.setClosedPhaseTickets(ticketRepository.countByCompleted(true));
         metrics.setCompletedTickets(ticketRepository.countByCompleted(true));
-        metrics.setCancelledTickets(ticketRepository.countByPhase(TicketPhase.CLOSED) - ticketRepository.countByCompleted(true));
+        metrics.setCancelledTickets(0);
         metrics.setTotalProjects(projectRepository.count());
 
         Map<String, Long> projectCounts = new HashMap<>();

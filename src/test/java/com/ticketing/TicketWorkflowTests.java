@@ -573,4 +573,82 @@ public class TicketWorkflowTests {
         assertThrows(IllegalStateException.class, () ->
                 ticketService.toggleCheckpoint(ticket.getId(), cp1.getId(), false));
     }
+
+    @Test
+    @DisplayName("Cancelled tickets in Live scope are excluded by default and only included when includeCancelled is true")
+    void testCancelledTicketsExcludedByDefaultAndIncludedWhenRequested() {
+        CreateTicketRequest req = new CreateTicketRequest();
+        req.setProjectCode("ADH");
+        req.setTitle("Live Cancel Ticket");
+        req.setDescription("Testing cancellation filtering");
+        req.setPriority(TicketPriority.MEDIUM);
+
+        TicketDetailResponse ticket = ticketService.createTicket(req, "admin");
+        ticketService.promoteTicket(ticket.getId());
+
+        // Cancel the ticket
+        TransitionPhaseRequest cancelReq = new TransitionPhaseRequest();
+        cancelReq.setPhase(TicketPhase.CLOSED);
+        cancelReq.setCompleted(false);
+        ticketService.transitionPhase(ticket.getId(), cancelReq);
+
+        // 1. By default (includeCancelled = false), cancelled ticket is NOT loaded
+        List<TicketSummaryResponse> defaultTickets = ticketService.getTicketsByProjectAndScope("ADH", TicketScope.LIVE, false, false);
+        boolean containsInDefault = defaultTickets.stream().anyMatch(t -> t.getId().equals(ticket.getId()));
+        assertFalse(containsInDefault, "Cancelled ticket should not be returned when includeCancelled is false");
+
+        // 2. Overload with 3 args (default) also excludes cancelled
+        List<TicketSummaryResponse> overloadTickets = ticketService.getTicketsByProjectAndScope("ADH", TicketScope.LIVE, false);
+        boolean containsInOverload = overloadTickets.stream().anyMatch(t -> t.getId().equals(ticket.getId()));
+        assertFalse(containsInOverload, "Cancelled ticket should not be returned with 3-arg overload");
+
+        // 3. When includeCancelled = true, cancelled ticket IS loaded
+        List<TicketSummaryResponse> withCancelled = ticketService.getTicketsByProjectAndScope("ADH", TicketScope.LIVE, false, true);
+        boolean containsWhenRequested = withCancelled.stream().anyMatch(t -> t.getId().equals(ticket.getId()));
+        assertTrue(containsWhenRequested, "Cancelled ticket should be returned when includeCancelled is true");
+
+        // 4. Test with includeAllCompleted = true
+        List<TicketSummaryResponse> allCompletedWithoutCancelled = ticketService.getTicketsByProjectAndScope("ADH", TicketScope.LIVE, true, false);
+        assertFalse(allCompletedWithoutCancelled.stream().anyMatch(t -> t.getId().equals(ticket.getId())));
+
+        List<TicketSummaryResponse> allCompletedWithCancelled = ticketService.getTicketsByProjectAndScope("ADH", TicketScope.LIVE, true, true);
+        assertTrue(allCompletedWithCancelled.stream().anyMatch(t -> t.getId().equals(ticket.getId())));
+    }
+
+    @Test
+    @DisplayName("Cancelled tickets in Plan scope are excluded by default and only included when includeCancelled is true")
+    void testPlanScopeCancelledTicketsExcludedByDefaultAndIncludedWhenRequested() {
+        CreateTicketRequest req = new CreateTicketRequest();
+        req.setProjectCode("ADH");
+        req.setTitle("Plan Cancel Ticket");
+        req.setDescription("Testing plan cancellation filtering");
+        req.setPriority(TicketPriority.LOW);
+
+        TicketDetailResponse ticket = ticketService.createTicket(req, "admin");
+        ticketService.cancelPlanTicket(ticket.getId());
+
+        // By default, cancelled plan ticket is NOT loaded
+        List<TicketSummaryResponse> defaultPlanTickets = ticketService.getTicketsByProjectAndScope("ADH", TicketScope.PLAN, false, false);
+        assertFalse(defaultPlanTickets.stream().anyMatch(t -> t.getId().equals(ticket.getId())));
+
+        // When includeCancelled = true, cancelled plan ticket IS loaded
+        List<TicketSummaryResponse> planTicketsWithCancelled = ticketService.getTicketsByProjectAndScope("ADH", TicketScope.PLAN, false, true);
+        assertTrue(planTicketsWithCancelled.stream().anyMatch(t -> t.getId().equals(ticket.getId())));
+    }
+
+    @Test
+    @DisplayName("Metrics dashboard does not calculate cancelled tickets")
+    void testMetricsDoesNotCalculateCancelled() {
+        CreateTicketRequest req = new CreateTicketRequest();
+        req.setProjectCode("ADH");
+        req.setTitle("Metrics Ticket");
+        req.setDescription("Testing metrics without cancelled");
+        req.setPriority(TicketPriority.HIGH);
+
+        TicketDetailResponse ticket = ticketService.createTicket(req, "admin");
+        ticketService.cancelPlanTicket(ticket.getId());
+
+        MetricsResponse metrics = ticketService.getMetrics();
+        assertEquals(0, metrics.getCancelledTickets(), "Cancelled tickets count in metrics should be 0");
+    }
 }

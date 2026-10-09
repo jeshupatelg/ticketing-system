@@ -104,8 +104,8 @@ export const api = {
     }).then(res => handleResponse<Project>(res)),
 
   // Tickets
-  getProjectTickets: (projectCode: string, scope: ScopeType, allCompleted = false): Promise<TicketSummary[]> =>
-    fetch(`${API_BASE}/projects/${projectCode}/tickets?ticketScope=${scope}&includeAllCompleted=${allCompleted}`).then(res => handleResponse<TicketSummary[]>(res)),
+  getProjectTickets: (projectCode: string, scope: ScopeType, allCompleted = false, includeCancelled = false): Promise<TicketSummary[]> =>
+    fetch(`${API_BASE}/projects/${projectCode}/tickets?ticketScope=${scope}&includeAllCompleted=${allCompleted}&includeCancelled=${includeCancelled}`).then(res => handleResponse<TicketSummary[]>(res)),
 
   getTicket: (id: string): Promise<TicketDetail> =>
     fetch(`${API_BASE}/tickets/${id}`).then(res => handleResponse<TicketDetail>(res)),
