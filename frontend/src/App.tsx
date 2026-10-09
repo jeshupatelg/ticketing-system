@@ -135,11 +135,19 @@ export const App: React.FC = () => {
     }
   };
 
+  const refreshProjects = useCallback(() => {
+    api.getProjects().then(updated => {
+      setProjects(updated);
+      setActiveProject(prev => prev ? (updated.find(p => p.code === prev.code) || prev) : null);
+    }).catch(console.error);
+  }, []);
+
   const handlePromoteTicket = async (ticketId: string) => {
     try {
       await api.promoteTicket(ticketId);
       loadTickets();
       api.getMetrics().then(setMetrics).catch(console.error);
+      refreshProjects();
     } catch (err: any) {
       alert(err.message);
     }
@@ -150,6 +158,7 @@ export const App: React.FC = () => {
       await api.cancelPlanTicket(ticketId);
       loadTickets();
       api.getMetrics().then(setMetrics).catch(console.error);
+      refreshProjects();
     } catch (err: any) {
       alert(err.message);
     }
@@ -166,6 +175,7 @@ export const App: React.FC = () => {
     loadTickets();
     api.getMetrics().then(setMetrics).catch(console.error);
     api.getTags().then(setTags).catch(console.error);
+    refreshProjects();
   };
 
   return (
@@ -185,6 +195,7 @@ export const App: React.FC = () => {
         onNavigateDashboard={() => {
           setActiveView('dashboard');
           api.getMetrics().then(setMetrics).catch(console.error);
+          refreshProjects();
         }}
       />
 
@@ -239,6 +250,7 @@ export const App: React.FC = () => {
           onTicketUpdated={() => {
             loadTickets();
             api.getMetrics().then(setMetrics).catch(console.error);
+            refreshProjects();
           }}
           users={users}
           onOpenRelatedTicket={relId => setSelectedTicketId(relId)}

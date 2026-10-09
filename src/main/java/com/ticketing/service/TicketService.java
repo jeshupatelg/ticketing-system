@@ -681,9 +681,9 @@ public class TicketService {
      */
     public MetricsResponse getMetrics() {
         MetricsResponse metrics = new MetricsResponse();
-        metrics.setTotalTickets(ticketRepository.count());
-        metrics.setPlanScopeTickets(ticketRepository.countByScope(TicketScope.PLAN));
-        metrics.setLiveScopeTickets(ticketRepository.countByScope(TicketScope.LIVE));
+        metrics.setTotalTickets(ticketRepository.countNonCancelled());
+        metrics.setPlanScopeTickets(ticketRepository.countNonCancelledByScope(TicketScope.PLAN));
+        metrics.setLiveScopeTickets(ticketRepository.countNonCancelledByScope(TicketScope.LIVE));
         metrics.setPlannedPhaseTickets(ticketRepository.countByPhase(TicketPhase.PLANNED));
         metrics.setExecutionPhaseTickets(ticketRepository.countByPhase(TicketPhase.EXECUTION));
         metrics.setTestPhaseTickets(ticketRepository.countByPhase(TicketPhase.TEST));
@@ -694,7 +694,7 @@ public class TicketService {
 
         Map<String, Long> projectCounts = new HashMap<>();
         for (Project p : projectRepository.findAll()) {
-            projectCounts.put(p.getCode(), ticketRepository.countByProjectCode(p.getCode()));
+            projectCounts.put(p.getCode(), ticketRepository.countNonCancelledByProjectCode(p.getCode()));
         }
         metrics.setProjectTicketCounts(projectCounts);
 

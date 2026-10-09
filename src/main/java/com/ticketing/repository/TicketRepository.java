@@ -25,6 +25,15 @@ public interface TicketRepository extends JpaRepository<Ticket, String> {
 
     long countByProjectCode(String projectCode);
 
+    @Query("SELECT COUNT(t) FROM Ticket t WHERE t.phase != 'CLOSED' OR t.completed = true")
+    long countNonCancelled();
+
+    @Query("SELECT COUNT(t) FROM Ticket t WHERE t.scope = :scope AND (t.phase != 'CLOSED' OR t.completed = true)")
+    long countNonCancelledByScope(TicketScope scope);
+
+    @Query("SELECT COUNT(t) FROM Ticket t WHERE t.projectCode = :projectCode AND (t.phase != 'CLOSED' OR t.completed = true)")
+    long countNonCancelledByProjectCode(String projectCode);
+
     @Query("SELECT t FROM Ticket t WHERE t.projectCode = :projectCode AND t.scope = 'LIVE' " +
            "AND (t.phase != 'CLOSED' OR t.completedAt IS NULL OR t.completedAt >= :oneWeekAgo)")
     List<Ticket> findLiveTicketsDefault(String projectCode, Instant oneWeekAgo);

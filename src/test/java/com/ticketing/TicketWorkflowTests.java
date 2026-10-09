@@ -651,4 +651,46 @@ public class TicketWorkflowTests {
         MetricsResponse metrics = ticketService.getMetrics();
         assertEquals(0, metrics.getCancelledTickets(), "Cancelled tickets count in metrics should be 0");
     }
+
+    @Test
+    @DisplayName("Project ticket count excludes cancelled tickets in project responses and metrics")
+    void testProjectTicketCountExcludesCancelled() {
+        ProjectResponse initialProj = projectService.getProjectResponse("ADH");
+        long initialCount = initialProj.getTicketCount();
+
+        // 1. Create a ticket
+        CreateTicketRequest req1 = new CreateTicketRequest();
+        req1.setProjectCode("ADH");
+        req1.setTitle("Count Test Active");
+        req1.setDescription("Testing non-cancelled count");
+        req1.setPriority(TicketPriority.MEDIUM);
+        TicketDetailResponse ticket1 = ticketService.createTicket(req1, "admin");
+
+        ProjectResponse afterOne = projectService.getProjectResponse("ADH");
+        assertEquals(initialCount + 1, afterOne.getTicketCount(), "Count should increment on new ticket");
+
+        // 2. Create another ticket and cancel it
+        CreateTicketRequest req2 = new CreateTicketRequest();
+        req2.setProjectCode("ADH");
+        req2.setTitle("Count Test Cancelled");
+        req2.setDescription("Testing cancellation count exclusion");
+        req2.setPriority(TicketPriority.LOW);
+        TicketDetailResponse ticket2 = ticketService.createTicket(req2, "admin");
+        ticketService.cancelPlanTicket(ticket2.getId());
+
+        // Count should remain initialCount + 1 (ticket2 is cancelled so excluded)
+        ProjectResponse afterCancel = projectService.getProjectResponse("ADH");
+        assertEquals(initialCount + 1, afterCancel.getTicketCount(), "Cancelled ticket should NOT be included in project ticket count");
+
+        // Verify getAllProjects list also excludes cancelled
+        ProjectResponse fromList = projectService.getAllProjects().stream()
+                .filter(p -> p.getCode().equals("ADH"))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(initialCount + 1, fromList.getTicketCount(), "Project in getAllProjects list should exclude cancelled tickets");
+
+        // Verify metrics projectCounts map excludes cancelled
+        MetricsResponse metrics = ticketService.getMetrics();
+        assertEquals(initialCount + 1, metrics.getProjectTicketCounts().get("ADH"));
+    }
 }

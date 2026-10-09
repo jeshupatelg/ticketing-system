@@ -82,7 +82,7 @@ public class ProjectService {
     }
 
     private ProjectResponse toResponse(Project project) {
-        long count = ticketRepository.countByProjectCode(project.getCode());
+        long count = ticketRepository.countNonCancelledByProjectCode(project.getCode());
         return new ProjectResponse(
                 project.getCode(),
                 project.getName(),
