@@ -30,6 +30,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: ${BASE_IMAGE:-customized-eclipse-temurin:21-jdk}
     image: ticketing-system:latest
     container_name: ticketing-app
     restart: unless-stopped
@@ -37,33 +39,22 @@ services:
     #   postgres:
     #     condition: service_healthy
     environment:
+      # Centralized Config Manager Integration (customized base image)
+      CONFIG_IMPORT_ENABLED: ${CONFIG_IMPORT_ENABLED:-true}
+      CONFIG_EXPORT_ENABLED: ${CONFIG_EXPORT_ENABLED:-false}
+      CONFIG_MANAGER_URL: ${CONFIG_MANAGER_URL:-https://config-manager:8443}
+      APPLICATION_NAME: ${APPLICATION_NAME:-ticketing-app}
+      CONFIG_PARAMS: ${CONFIG_PARAMS:-pg}
+
       PORT: ${PORT:-8080}
       CONTEXT_PATH: ${CONTEXT_PATH:-}
-
-      # PostgreSQL Database Connection (remote PostgreSQL instance on gateway_net)
-      DB_HOST: ${DB_HOST:-homeserver-pg}
-      DB_PORT: ${DB_PORT:-5432}
-      DB_NAME: ${DB_NAME:-ticketing_db}
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://${DB_HOST:-homeserver-pg}:${DB_PORT:-5432}/${DB_NAME:-ticketing_db}}
-      DB_USER: ${DB_USER:-admin}
-      DB_PASSWORD: ${DB_PASSWORD:-admin}
-      JPA_DDL_AUTO: ${JPA_DDL_AUTO:-update}
-
-      # Keycloak JWT relayed by APIGW
-      JWT_HEADER: ${JWT_HEADER:-Authorization}
-      JWT_PREFIX: ${JWT_PREFIX:-Bearer }
-
-      # Attachment & Avatar Configurable Limits
-      MAX_ATTACHMENT_COUNT: ${MAX_ATTACHMENT_COUNT:-10}
-      MAX_ATTACHMENT_SIZE_MB: ${MAX_ATTACHMENT_SIZE_MB:-20}
-      MAX_AVATAR_SIZE_MB: ${MAX_AVATAR_SIZE_MB:-2}
-      ATTACHMENT_STORAGE_DIR: /app/data/attachments
-      AVATAR_STORAGE_DIR: /app/data/avatars
     extra_hosts:
+
       - "host.docker.internal:host-gateway"
     ports:
       - "${HOST_PORT:-8086}:${PORT:-8080}"
     volumes:
+      - ${CONFIG_CERTS_PATH:-/config}/ticketing-app:/certs:ro
       - app_attachments:/app/data/attachments
       - app_avatars:/app/data/avatars
     networks:
