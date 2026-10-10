@@ -18,10 +18,8 @@ WORKDIR /app
 # Ensure curl is available for healthcheck if not already provided by base image
 RUN which curl > /dev/null 2>&1 || (apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*)
 
-# Patch base image script to prevent set -e termination on post-increment when count is 0
-RUN sed -i 's/((loaded_count++))/(( ++loaded_count ))/' /usr/local/bin/scripts/config-import-script.sh 2>/dev/null || true
-
 # Create application user and runtime directories
+
 RUN groupadd -r appgroup && useradd -r -g appgroup -d /app appuser
 RUN mkdir -p /app/data/attachments /app/data/avatars && chown -R appuser:appgroup /app
 
