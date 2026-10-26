@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, Check, Palette, User as UserIcon } from 'lucide-react';
+import { X, Upload, Check, User as UserIcon } from 'lucide-react';
 import { api, resolveUrl } from '../api';
 import { User, PredefinedPhoto } from '../types';
 
@@ -29,8 +29,7 @@ export const ProfileModal: React.FC<Props> = ({
   const [photos, setPhotos] = useState<PredefinedPhoto[]>([]);
   const [selectedAvatar, setSelectedAvatar] = useState(currentUser?.avatarUrl || '');
   const [currentTheme, setCurrentTheme] = useState(currentUser?.themePreference || 'dark');
-  const [users, setUsers] = useState<User[]>([]);
-  const [activeTab, setActiveTab] = useState<'profile' | 'theme' | 'switch'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'theme'>('profile');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [maxSizeMb, setMaxSizeMb] = useState<number>(2);
@@ -38,7 +37,6 @@ export const ProfileModal: React.FC<Props> = ({
   useEffect(() => {
     if (isOpen) {
       api.getPhotos('USER').then(setPhotos).catch(console.error);
-      api.getUsers().then(setUsers).catch(console.error);
       api.getPhotoConfig().then(cfg => {
         if (cfg && cfg.maxSizeMb) setMaxSizeMb(cfg.maxSizeMb);
       }).catch(console.error);
@@ -99,13 +97,6 @@ export const ProfileModal: React.FC<Props> = ({
     }
   };
 
-  const handleSwitchUser = (user: User) => {
-    // In dev mode, we can set X-User-Name header or switch profile
-    onUserUpdated(user);
-    onThemeChanged(user.themePreference || 'dark');
-    onClose();
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
       <div className="bg-theme-surface border border-theme-border rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
@@ -136,14 +127,6 @@ export const ProfileModal: React.FC<Props> = ({
             }`}
           >
             Theme
-          </button>
-          <button
-            onClick={() => setActiveTab('switch')}
-            className={`py-2.5 px-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === 'switch' ? 'border-theme-primary text-theme-primary' : 'border-transparent text-theme-muted hover:text-theme-text'
-            }`}
-          >
-            Simulate User
           </button>
         </div>
 
@@ -231,40 +214,6 @@ export const ProfileModal: React.FC<Props> = ({
                       </div>
                     </div>
                     {currentTheme === t.id && <Check className="w-4 h-4 text-theme-primary" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'switch' && (
-            <div className="space-y-2">
-              <div className="text-xs text-theme-muted mb-2">
-                Switching active user for testing ticket assignments, reassignments, and comments:
-              </div>
-              <div className="space-y-1.5 max-h-56 overflow-y-auto">
-                {users.map(u => (
-                  <button
-                    key={u.username}
-                    onClick={() => handleSwitchUser(u)}
-                    className={`w-full flex items-center justify-between p-2.5 rounded-lg border text-left transition-all ${
-                      currentUser.username === u.username
-                        ? 'border-theme-primary bg-theme-surfaceHover'
-                        : 'border-theme-border hover:bg-theme-surfaceHover/50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <img src={resolveUrl(u.avatarUrl, '/api/photos/default/avatar-1.svg')} alt={u.name} className="w-7 h-7 rounded-full object-cover" />
-                      <div>
-                        <span className="text-sm font-medium text-theme-text">{u.name}</span>
-                        <span className="text-xs text-theme-muted ml-2">@{u.username}</span>
-                      </div>
-                    </div>
-                    {currentUser.username === u.username && (
-                      <span className="text-[10px] uppercase font-bold text-theme-primary px-2 py-0.5 bg-theme-primary/10 rounded">
-                        Active
-                      </span>
-                    )}
                   </button>
                 ))}
               </div>
